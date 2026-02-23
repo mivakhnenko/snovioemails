@@ -1,0 +1,20 @@
+{
+  "name": "snovio-deliverability-dashboard",
+  "version": "1.0.0",
+  "description": "Snov.io Email Deliverability Dashboard",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "xlsx": "^0.18.5"
+  }
+}

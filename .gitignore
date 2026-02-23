@@ -1,0 +1,16 @@
+node_modules/
+*.xlsx
+.env
+.claude/
+
+# Leftover exploration/debug files
+*.json
+!package.json
+!package-lock.json
+*.js
+!server.js
+*.md
+*.tar.gz
+*.zip
+*.txt
+nul

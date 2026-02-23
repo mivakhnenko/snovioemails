@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Snov.io Email Deliverability Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --surface2: #242836; --border: #2d3248;
+    --text: #e4e6f0; --text-dim: #8b8fa3; --accent: #5b6cf7; --accent-light: #7b8af9;
+    --green: #34d399; --yellow: #fbbf24; --red: #f87171; --orange: #fb923c;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; }
+
+  .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 16px 32px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+  .header h1 { font-size: 20px; font-weight: 600; }
+  .header h1 .logo { color: var(--accent); font-weight: 700; }
+  .header-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .sync-info { font-size: 11px; color: var(--text-dim); max-width: 200px; }
+
+  .btn { padding: 7px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.15s; white-space: nowrap; }
+  .btn:hover { background: var(--border); }
+  .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent-light); }
+  .btn-sm { padding: 4px 10px; font-size: 11px; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+
+  .tabs { display: flex; gap: 4px; margin-bottom: 24px; border-bottom: 1px solid var(--border); overflow-x: auto; }
+  .tab { padding: 10px 18px; cursor: pointer; font-size: 13px; color: var(--text-dim); border-bottom: 2px solid transparent; transition: all 0.15s; background: none; border-top: none; border-left: none; border-right: none; font-weight: 500; white-space: nowrap; }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  .score-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(185px, 1fr)); gap: 14px; margin-bottom: 24px; }
+  .score-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+  .score-card .label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .score-card .value { font-size: 26px; font-weight: 700; }
+  .score-card .sub { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+  .score-card .change { font-size: 11px; margin-top: 3px; }
+  .score-card .change.up { color: var(--green); }
+  .score-card .change.down { color: var(--red); }
+  .score-card .change.neutral { color: var(--text-dim); }
+
+  .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  .chart-box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+  .chart-box.full { grid-column: 1 / -1; }
+  .chart-box h3 { font-size: 13px; font-weight: 600; margin-bottom: 14px; color: var(--text-dim); }
+  .chart-box canvas { max-height: 280px; }
+
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 24px; }
+  .table-wrap h3 { padding: 14px 18px 10px; font-size: 13px; font-weight: 600; }
+  .table-header { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px 10px; }
+  .table-header h3 { padding: 0; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  thead th { text-align: left; padding: 8px 14px; background: var(--surface2); color: var(--text-dim); font-weight: 500; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); white-space: nowrap; cursor: pointer; user-select: none; }
+  thead th:hover { color: var(--text); }
+  thead th.sorted-asc::after { content: ' ▲'; font-size: 8px; }
+  thead th.sorted-desc::after { content: ' ▼'; font-size: 8px; }
+  tbody td { padding: 8px 14px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  tbody tr:hover { background: var(--surface2); }
+
+  .flag-ok { color: var(--green); }
+  .flag-warn { color: var(--yellow); }
+  .flag-crit { color: var(--red); }
+
+  .form-section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 24px; }
+  .form-section h3 { font-size: 15px; font-weight: 600; margin-bottom: 14px; }
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .form-group label { display: block; font-size: 11px; color: var(--text-dim); margin-bottom: 3px; }
+  .form-group input, .form-group select { width: 100%; padding: 7px 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 12px; }
+  .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--accent); }
+
+  .health-badge { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .health-badge.healthy { background: rgba(52,211,153,0.15); color: var(--green); }
+  .health-badge.warning { background: rgba(251,191,36,0.15); color: var(--yellow); }
+  .health-badge.critical { background: rgba(248,113,113,0.15); color: var(--red); }
+
+  .status-badge { display: inline-flex; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .status-badge.active { background: rgba(52,211,153,0.15); color: var(--green); }
+  .status-badge.stopped { background: rgba(248,113,113,0.15); color: var(--red); }
+  .status-badge.draft { background: rgba(139,143,163,0.15); color: var(--text-dim); }
+
+  .filter-bar { display: flex; gap: 10px; margin-bottom: 14px; align-items: center; flex-wrap: wrap; }
+  .filter-bar select, .filter-bar input { padding: 5px 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 12px; }
+  .filter-bar label { font-size: 11px; color: var(--text-dim); }
+
+  .toast { position: fixed; bottom: 24px; right: 24px; padding: 10px 18px; background: var(--accent); color: #fff; border-radius: 8px; font-size: 12px; opacity: 0; transform: translateY(10px); transition: all 0.3s; z-index: 1000; }
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  .period-selector { display: flex; gap: 6px; margin-bottom: 16px; }
+  .period-btn { padding: 5px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface2); color: var(--text-dim); cursor: pointer; font-size: 11px; }
+  .period-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  .section-title { font-size: 13px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; margin: 24px 0 12px; }
+  .section-title:first-child { margin-top: 0; }
+
+  @media (max-width: 768px) {
+    .chart-row { grid-template-columns: 1fr; }
+    .score-grid { grid-template-columns: repeat(2, 1fr); }
+    .header { padding: 12px 16px; }
+    .container { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1><span class="logo">Snov.io</span> Deliverability Dashboard</h1>
+  <div class="header-actions">
+    <span class="sync-info" id="lastSync"></span>
+    <button class="btn" id="btnImport" onclick="importExcel()">Import Excel</button>
+    <button class="btn btn-primary" id="btnSync" onclick="syncAll()">Sync SendPulse</button>
+  </div>
+</div>
+
+<div class="container">
+  <div class="tabs">
+    <button class="tab active" data-tab="overview">Overview</button>
+    <button class="tab" data-tab="campaigns">Campaigns</button>
+    <button class="tab" data-tab="automations">Automations (A360)</button>
+    <button class="tab" data-tab="postmaster">Google Postmaster</button>
+  </div>
+
+  <!-- OVERVIEW TAB -->
+  <div class="tab-content active" id="tab-overview">
+    <div class="period-selector" id="overviewPeriod">
+      <button class="period-btn active" data-days="30">Last 30 days</button>
+      <button class="period-btn" data-days="90">Last 90 days</button>
+      <button class="period-btn" data-days="180">Last 6 months</button>
+      <button class="period-btn" data-days="365">Last year</button>
+      <button class="period-btn" data-days="0">All time</button>
+    </div>
+
+    <div class="score-grid" id="scoreCards"></div>
+
+    <div class="section-title">Campaign Trends</div>
+    <div class="chart-row">
+      <div class="chart-box">
+        <h3>Open & Click Rates</h3>
+        <canvas id="chartPerformance"></canvas>
+      </div>
+      <div class="chart-box">
+        <h3>Bounce & Unsubscribe Rates</h3>
+        <canvas id="chartHealth"></canvas>
+      </div>
+    </div>
+
+    <div class="section-title">Google Postmaster Trends</div>
+    <div class="chart-row">
+      <div class="chart-box">
+        <h3>Spam Rate (weekly)</h3>
+        <canvas id="chartSpamRate"></canvas>
+      </div>
+      <div class="chart-box">
+        <h3>Authentication Rates (weekly)</h3>
+        <canvas id="chartAuth"></canvas>
+      </div>
+    </div>
+
+    <div class="section-title">Automation 360 Overview</div>
+    <div class="score-grid" id="a360ScoreCards"></div>
+
+    <div class="table-wrap">
+      <h3>Recent Flagged Campaigns</h3>
+      <table>
+        <thead><tr><th>Date</th><th>Campaign</th><th>Flag</th><th>Open %</th><th>Bounce %</th><th>Unsub %</th><th>Issue</th></tr></thead>
+        <tbody id="flaggedTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- CAMPAIGNS TAB -->
+  <div class="tab-content" id="tab-campaigns">
+    <div class="filter-bar">
+      <div><label>From:</label> <input type="date" id="campFrom" /></div>
+      <div><label>To:</label> <input type="date" id="campTo" /></div>
+      <div><label>Search:</label> <input type="text" id="campSearch" placeholder="Campaign name..." /></div>
+      <div><label>Flag:</label> <select id="campFlag"><option value="">All</option><option value="healthy">Healthy</option><option value="warning">Warning</option><option value="critical">Critical</option></select></div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th data-sort="sendDate">Date</th><th data-sort="name">Campaign</th><th data-sort="sent">Sent</th><th data-sort="delivered">Delivered</th>
+          <th data-sort="openRate">Open %</th><th data-sort="clickRate">Click %</th><th data-sort="bounceRate">Bounce %</th><th data-sort="unsubRate">Unsub %</th><th>Flag</th>
+        </tr></thead>
+        <tbody id="campaignTable"></tbody>
+      </table>
+    </div>
+    <div style="text-align:center;padding:8px"><button class="btn" id="campShowMore" onclick="showMoreCampaigns()">Show more</button></div>
+  </div>
+
+  <!-- AUTOMATIONS TAB -->
+  <div class="tab-content" id="tab-automations">
+    <div class="filter-bar">
+      <div><label>Status:</label> <select id="autoStatus"><option value="">All</option><option value="active" selected>Active</option><option value="stopped">Stopped</option><option value="draft">Draft</option></select></div>
+      <div><label>Search:</label> <input type="text" id="autoSearch" placeholder="Flow name..." /></div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th data-asort="name">Flow Name</th><th>Status</th><th>Sender</th>
+          <th data-asort="starts">Starts</th><th data-asort="sendMessages">Emails Sent</th>
+          <th>Email Steps</th><th data-asort="lastActivity">Last Activity</th>
+        </tr></thead>
+        <tbody id="autoTable"></tbody>
+      </table>
+    </div>
+    <div id="autoDetail" style="display:none">
+      <div class="table-wrap">
+        <div class="table-header">
+          <h3 id="autoDetailTitle">Flow Email Steps</h3>
+          <button class="btn btn-sm" onclick="closeAutoDetail()">Close</button>
+        </div>
+        <table>
+          <thead><tr><th>Subject</th><th>Sender</th><th>Last Sent</th></tr></thead>
+          <tbody id="autoDetailTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- POSTMASTER TAB -->
+  <div class="tab-content" id="tab-postmaster">
+    <div class="form-section">
+      <h3>Add Weekly Postmaster Entry</h3>
+      <p style="font-size:12px;color:var(--text-dim);margin-bottom:14px">Enter the average values from Google Postmaster for the week. Week ending = Sunday date.</p>
+      <form id="pmForm" onsubmit="savePostmaster(event)">
+        <div class="form-grid">
+          <div class="form-group"><label>Week Ending (Sunday)</label><input type="date" id="pmWeekEnding" required /></div>
+          <div class="form-group"><label>Avg Spam Rate %</label><input type="number" step="0.001" id="pmSpam" placeholder="0.08" /></div>
+          <div class="form-group"><label>Avg SPF Pass %</label><input type="number" step="0.1" id="pmSpf" placeholder="99.0" /></div>
+          <div class="form-group"><label>Avg DKIM Pass %</label><input type="number" step="0.1" id="pmDkim" placeholder="99.0" /></div>
+          <div class="form-group"><label>Avg DMARC Pass %</label><input type="number" step="0.1" id="pmDmarc" placeholder="99.0" /></div>
+          <div class="form-group"><label>Notes</label><input type="text" id="pmNotes" placeholder="Optional" /></div>
+        </div>
+        <button type="submit" class="btn btn-primary">Save Entry</button>
+      </form>
+    </div>
+    <div class="table-wrap">
+      <h3>Postmaster Weekly Log</h3>
+      <table>
+        <thead><tr><th>Week Ending</th><th>Spam %</th><th>SPF %</th><th>DKIM %</th><th>DMARC %</th><th>Notes</th><th></th></tr></thead>
+        <tbody id="pmTable"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let appData = { postmaster: [], campaigns: [], automations: [], lastSyncDate: null, lastA360SyncDate: null };
+let campaignPage = 0;
+const CAMPAIGNS_PER_PAGE = 50;
+let campaignSort = { key: 'sendDate', dir: 'desc' };
+let autoSort = { key: 'lastActivity', dir: 'desc' };
+let overviewDays = 30;
+let charts = {};
+
+const THRESHOLDS = {
+  bounceRate: { healthy: 2, warning: 5 },
+  unsubRate:  { healthy: 0.5, warning: 1 },
+  openRate:   { healthy: 15, warning: 10 },
+  clickRate:  { healthy: 2, warning: 1 },
+};
+
+async function init() {
+  const res = await fetch('/api/data');
+  appData = await res.json();
+  updateSyncInfo();
+  renderAll();
+  // Set default postmaster date to last Sunday
+  const now = new Date(); const day = now.getDay();
+  const lastSun = new Date(now); lastSun.setDate(now.getDate() - day);
+  document.getElementById('pmWeekEnding').value = lastSun.toISOString().substring(0, 10);
+}
+
+function updateSyncInfo() {
+  const parts = [];
+  if (appData.lastSyncDate) parts.push('Campaigns: ' + new Date(appData.lastSyncDate).toLocaleDateString());
+  if (appData.lastA360SyncDate) parts.push('A360: ' + new Date(appData.lastA360SyncDate).toLocaleDateString());
+  document.getElementById('lastSync').textContent = parts.length ? 'Last sync: ' + parts.join(' | ') : '';
+}
+
+function renderAll() {
+  renderScoreCards();
+  renderOverviewCharts();
+  renderA360ScoreCards();
+  renderFlaggedTable();
+  renderCampaignTable();
+  renderAutoTable();
+  renderPostmasterTable();
+}
+
+// --- Tabs ---
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+// --- Period selector ---
+document.getElementById('overviewPeriod').addEventListener('click', e => {
+  if (!e.target.matches('.period-btn')) return;
+  document.querySelectorAll('#overviewPeriod .period-btn').forEach(b => b.classList.remove('active'));
+  e.target.classList.add('active');
+  overviewDays = parseInt(e.target.dataset.days);
+  renderScoreCards();
+  renderOverviewCharts();
+  renderFlaggedTable();
+});
+
+function getCampaignsInPeriod(days) {
+  if (days === 0) return appData.campaigns;
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - days);
+  const cutoffStr = cutoff.toISOString().substring(0, 10);
+  return appData.campaigns.filter(c => c.sendDate >= cutoffStr);
+}
+
+function getPmInPeriod(days) {
+  if (days === 0) return appData.postmaster;
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - days);
+  const cutoffStr = cutoff.toISOString().substring(0, 10);
+  return appData.postmaster.filter(p => p.weekEnding >= cutoffStr);
+}
+
+// --- Score Cards ---
+function renderScoreCards() {
+  const current = getCampaignsInPeriod(overviewDays);
+  const prevCutoff = overviewDays === 0 ? 0 : overviewDays * 2;
+  const allPrev = getCampaignsInPeriod(prevCutoff);
+  const prev = allPrev.filter(c => !current.includes(c));
+
+  const pm = getPmInPeriod(overviewDays);
+  const pmAll = getPmInPeriod(prevCutoff);
+  const pmPrev = pmAll.filter(p => !pm.includes(p));
+
+  const avg = (arr, key) => arr.length > 0 ? arr.reduce((s, c) => s + (c[key] || 0), 0) / arr.length : null;
+  const sum = (arr, key) => arr.reduce((s, c) => s + (c[key] || 0), 0);
+
+  const totalSent = sum(current, 'sent');
+  const totalDelivered = sum(current, 'delivered');
+  const deliveryRate = totalSent > 0 ? (totalDelivered / totalSent * 100) : null;
+
+  const metrics = [
+    { label: 'Campaigns Sent', value: current.length, sub: `${totalSent.toLocaleString()} emails total` },
+    { label: 'Delivery Rate', value: deliveryRate !== null ? deliveryRate.toFixed(1) + '%' : 'N/A', status: deliveryRate > 98 ? 'healthy' : deliveryRate > 95 ? 'warning' : 'critical' },
+    { label: 'Avg Open Rate', value: avg(current, 'openRate')?.toFixed(1) + '%' || 'N/A', current: avg(current, 'openRate'), prev: avg(prev, 'openRate'), reverse: true, status: avgStatus(avg(current, 'openRate'), 'openRate', true) },
+    { label: 'Avg Click Rate', value: avg(current, 'clickRate')?.toFixed(2) + '%' || 'N/A', current: avg(current, 'clickRate'), prev: avg(prev, 'clickRate'), reverse: true },
+    { label: 'Avg Bounce Rate', value: avg(current, 'bounceRate')?.toFixed(2) + '%' || 'N/A', current: avg(current, 'bounceRate'), prev: avg(prev, 'bounceRate'), status: avgStatus(avg(current, 'bounceRate'), 'bounceRate') },
+    { label: 'Avg Unsub Rate', value: avg(current, 'unsubRate')?.toFixed(3) + '%' || 'N/A', current: avg(current, 'unsubRate'), prev: avg(prev, 'unsubRate') },
+    { label: 'Postmaster Spam', value: pm.length > 0 ? avg(pm, 'spamRate')?.toFixed(3) + '%' : 'N/A', current: avg(pm, 'spamRate'), prev: avg(pmPrev, 'spamRate'), sub: pm.length + ' weeks of data' },
+    { label: 'Flagged Campaigns', value: current.filter(c => getFlag(c) !== 'healthy').length, sub: `of ${current.length} total` },
+  ];
+
+  document.getElementById('scoreCards').innerHTML = metrics.map(m => {
+    let changeHtml = '';
+    if (m.current != null && m.prev != null && m.prev > 0) {
+      const diff = m.current - m.prev;
+      const pct = ((diff / m.prev) * 100).toFixed(1);
+      const isGood = m.reverse ? diff > 0 : diff < 0;
+      const cls = Math.abs(parseFloat(pct)) < 1 ? 'neutral' : isGood ? 'up' : 'down';
+      const arrow = diff > 0 ? '↑' : diff < 0 ? '↓' : '→';
+      changeHtml = `<div class="change ${cls}">${arrow} ${Math.abs(pct)}% vs prev</div>`;
+    }
+    let statusHtml = '';
+    if (m.status) statusHtml = `<span class="health-badge ${m.status}" style="margin-left:8px;font-size:10px">${m.status}</span>`;
+    let subHtml = m.sub ? `<div class="sub">${m.sub}</div>` : '';
+    return `<div class="score-card"><div class="label">${m.label}</div><div class="value">${m.value}${statusHtml}</div>${subHtml}${changeHtml}</div>`;
+  }).join('');
+}
+
+function avgStatus(val, metric, reverse) {
+  if (val == null) return null;
+  const t = THRESHOLDS[metric];
+  if (!t) return null;
+  if (reverse) return val >= t.healthy ? 'healthy' : val >= t.warning ? 'warning' : 'critical';
+  return val <= t.healthy ? 'healthy' : val <= t.warning ? 'warning' : 'critical';
+}
+
+// --- A360 Score Cards ---
+function renderA360ScoreCards() {
+  const auto = appData.automations || [];
+  const active = auto.filter(a => a.status === 'active');
+  const totalStarts = active.reduce((s, a) => s + a.starts, 0);
+  const totalSent = active.reduce((s, a) => s + a.sendMessages, 0);
+  const totalSteps = active.reduce((s, a) => s + a.emailStepCount, 0);
+
+  const cards = [
+    { label: 'Active Flows', value: active.length, sub: `${auto.length} total flows` },
+    { label: 'Total Starts', value: totalStarts.toLocaleString(), sub: 'People entered flows' },
+    { label: 'Emails Sent (A360)', value: totalSent.toLocaleString(), sub: 'All active flows combined' },
+    { label: 'Email Steps', value: totalSteps, sub: 'Across active flows' },
+  ];
+
+  document.getElementById('a360ScoreCards').innerHTML = cards.map(m =>
+    `<div class="score-card"><div class="label">${m.label}</div><div class="value">${m.value}</div><div class="sub">${m.sub}</div></div>`
+  ).join('');
+}
+
+// --- Charts (weekly aggregated) ---
+function renderOverviewCharts() {
+  const campaigns = getCampaignsInPeriod(overviewDays);
+  const pm = getPmInPeriod(overviewDays).slice().reverse();
+
+  // Aggregate campaigns by week
+  const weeklyMap = {};
+  campaigns.forEach(c => {
+    const d = new Date(c.sendDate);
+    const day = d.getDay();
+    const daysToSun = day === 0 ? 0 : 7 - day;
+    const sun = new Date(d); sun.setDate(d.getDate() + daysToSun);
+    const wk = sun.toISOString().substring(0, 10);
+    if (!weeklyMap[wk]) weeklyMap[wk] = [];
+    weeklyMap[wk].push(c);
+  });
+
+  const weeks = Object.keys(weeklyMap).sort();
+  const weeklyAvg = (key) => weeks.map(w => {
+    const arr = weeklyMap[w];
+    return arr.reduce((s, c) => s + c[key], 0) / arr.length;
+  });
+  const weekLabels = weeks.map(w => w.substring(5));
+
+  const chartOpts = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { labels: { color: '#8b8fa3', font: { size: 10 } } } },
+    scales: {
+      x: { ticks: { color: '#8b8fa3', font: { size: 9 }, maxRotation: 45 }, grid: { color: '#2d3248' } },
+      y: { ticks: { color: '#8b8fa3', font: { size: 9 } }, grid: { color: '#2d3248' } }
+    }
+  };
+
+  if (charts.perf) charts.perf.destroy();
+  if (weeks.length > 0) {
+    charts.perf = new Chart(document.getElementById('chartPerformance'), {
+      type: 'line',
+      data: {
+        labels: weekLabels,
+        datasets: [
+          { label: 'Avg Open %', data: weeklyAvg('openRate'), borderColor: '#5b6cf7', backgroundColor: 'rgba(91,108,247,0.1)', tension: 0.3, pointRadius: 3, fill: true },
+          { label: 'Avg Click %', data: weeklyAvg('clickRate'), borderColor: '#34d399', backgroundColor: 'rgba(52,211,153,0.1)', tension: 0.3, pointRadius: 3, fill: true }
+        ]
+      },
+      options: chartOpts
+    });
+  }
+
+  if (charts.health) charts.health.destroy();
+  if (weeks.length > 0) {
+    charts.health = new Chart(document.getElementById('chartHealth'), {
+      type: 'line',
+      data: {
+        labels: weekLabels,
+        datasets: [
+          { label: 'Avg Bounce %', data: weeklyAvg('bounceRate'), borderColor: '#fbbf24', backgroundColor: 'rgba(251,191,36,0.1)', tension: 0.3, pointRadius: 3, fill: true },
+          { label: 'Avg Unsub %', data: weeklyAvg('unsubRate'), borderColor: '#f87171', backgroundColor: 'rgba(248,113,113,0.1)', tension: 0.3, pointRadius: 3, fill: true }
+        ]
+      },
+      options: chartOpts
+    });
+  }
+
+  if (charts.spam) charts.spam.destroy();
+  if (pm.length > 0) {
+    charts.spam = new Chart(document.getElementById('chartSpamRate'), {
+      type: 'line',
+      data: {
+        labels: pm.map(p => p.weekEnding?.substring(5)),
+        datasets: [{
+          label: 'Avg Spam Rate %', data: pm.map(p => p.spamRate),
+          borderColor: '#f87171', backgroundColor: 'rgba(248,113,113,0.1)', fill: true, tension: 0.3, pointRadius: 3
+        }]
+      },
+      options: chartOpts
+    });
+  }
+
+  if (charts.auth) charts.auth.destroy();
+  if (pm.length > 0) {
+    charts.auth = new Chart(document.getElementById('chartAuth'), {
+      type: 'line',
+      data: {
+        labels: pm.map(p => p.weekEnding?.substring(5)),
+        datasets: [
+          { label: 'SPF %', data: pm.map(p => p.spfPass), borderColor: '#5b6cf7', tension: 0.3, pointRadius: 2 },
+          { label: 'DKIM %', data: pm.map(p => p.dkimPass), borderColor: '#34d399', tension: 0.3, pointRadius: 2 },
+          { label: 'DMARC %', data: pm.map(p => p.dmarcPass), borderColor: '#fb923c', tension: 0.3, pointRadius: 2 }
+        ]
+      },
+      options: { ...chartOpts, scales: { ...chartOpts.scales, y: { ...chartOpts.scales.y, min: 95, max: 100 } } }
+    });
+  }
+}
+
+// --- Flag logic ---
+function getFlag(c) {
+  if (c.bounceRate > THRESHOLDS.bounceRate.warning || c.unsubRate > THRESHOLDS.unsubRate.warning) return 'critical';
+  if (c.bounceRate > THRESHOLDS.bounceRate.healthy || c.unsubRate > THRESHOLDS.unsubRate.healthy || c.openRate < THRESHOLDS.openRate.warning) return 'warning';
+  return 'healthy';
+}
+function flagEmoji(flag) {
+  if (flag === 'critical') return '<span class="flag-crit">&#x1F6A8;</span>';
+  if (flag === 'warning') return '<span class="flag-warn">&#x26A0;&#xFE0F;</span>';
+  return '<span class="flag-ok">&#x2705;</span>';
+}
+function flagIssue(c) {
+  const issues = [];
+  if (c.bounceRate > THRESHOLDS.bounceRate.warning) issues.push('High bounce');
+  else if (c.bounceRate > THRESHOLDS.bounceRate.healthy) issues.push('Elevated bounce');
+  if (c.unsubRate > THRESHOLDS.unsubRate.warning) issues.push('High unsub');
+  else if (c.unsubRate > THRESHOLDS.unsubRate.healthy) issues.push('Elevated unsub');
+  if (c.openRate < THRESHOLDS.openRate.warning) issues.push('Low opens');
+  return issues.join(', ') || '-';
+}
+
+// --- Flagged table ---
+function renderFlaggedTable() {
+  const campaigns = getCampaignsInPeriod(overviewDays);
+  const flagged = campaigns.filter(c => getFlag(c) !== 'healthy').slice(0, 20);
+  document.getElementById('flaggedTable').innerHTML = flagged.length === 0
+    ? '<tr><td colspan="7" style="text-align:center;color:var(--text-dim);padding:20px">No flagged campaigns in this period</td></tr>'
+    : flagged.map(c => `<tr>
+        <td>${c.sendDate?.substring(0, 10)}</td><td>${esc(c.name?.substring(0, 50))}</td><td>${flagEmoji(getFlag(c))}</td>
+        <td>${c.openRate.toFixed(1)}</td><td>${c.bounceRate.toFixed(2)}</td><td>${c.unsubRate.toFixed(3)}</td><td>${flagIssue(c)}</td>
+      </tr>`).join('');
+}
+
+// --- Campaign table ---
+function getFilteredCampaigns() {
+  let list = [...appData.campaigns];
+  const from = document.getElementById('campFrom')?.value;
+  const to = document.getElementById('campTo')?.value;
+  const search = document.getElementById('campSearch')?.value?.toLowerCase();
+  const flag = document.getElementById('campFlag')?.value;
+  if (from) list = list.filter(c => c.sendDate >= from);
+  if (to) list = list.filter(c => c.sendDate <= to + ' 23:59:59');
+  if (search) list = list.filter(c => c.name?.toLowerCase().includes(search) || c.subject?.toLowerCase().includes(search));
+  if (flag) list = list.filter(c => getFlag(c) === flag);
+  list.sort((a, b) => {
+    const va = a[campaignSort.key] ?? '', vb = b[campaignSort.key] ?? '';
+    const cmp = typeof va === 'number' ? va - vb : String(va).localeCompare(String(vb));
+    return campaignSort.dir === 'asc' ? cmp : -cmp;
+  });
+  return list;
+}
+
+function renderCampaignTable() {
+  const filtered = getFilteredCampaigns();
+  const end = (campaignPage + 1) * CAMPAIGNS_PER_PAGE;
+  const shown = filtered.slice(0, end);
+  document.getElementById('campaignTable').innerHTML = shown.map(c => `<tr>
+    <td>${c.sendDate?.substring(0, 10)}</td><td title="${esc(c.subject)}">${esc(c.name?.substring(0, 55))}</td>
+    <td>${c.sent.toLocaleString()}</td><td>${c.delivered.toLocaleString()}</td>
+    <td>${c.openRate.toFixed(1)}</td><td>${c.clickRate.toFixed(2)}</td><td>${c.bounceRate.toFixed(2)}</td><td>${c.unsubRate.toFixed(3)}</td><td>${flagEmoji(getFlag(c))}</td>
+  </tr>`).join('');
+  document.getElementById('campShowMore').style.display = end >= filtered.length ? 'none' : '';
+  document.querySelectorAll('#tab-campaigns th[data-sort]').forEach(th => {
+    th.classList.remove('sorted-asc', 'sorted-desc');
+    if (th.dataset.sort === campaignSort.key) th.classList.add(campaignSort.dir === 'asc' ? 'sorted-asc' : 'sorted-desc');
+  });
+}
+function showMoreCampaigns() { campaignPage++; renderCampaignTable(); }
+
+document.addEventListener('click', e => {
+  if (e.target.matches('#tab-campaigns th[data-sort]')) {
+    const key = e.target.dataset.sort;
+    if (campaignSort.key === key) campaignSort.dir = campaignSort.dir === 'asc' ? 'desc' : 'asc';
+    else { campaignSort.key = key; campaignSort.dir = 'desc'; }
+    campaignPage = 0; renderCampaignTable();
+  }
+});
+['campFrom','campTo','campSearch','campFlag'].forEach(id => {
+  const el = document.getElementById(id);
+  el?.addEventListener('input', () => { campaignPage = 0; renderCampaignTable(); });
+  el?.addEventListener('change', () => { campaignPage = 0; renderCampaignTable(); });
+});
+
+// --- Automations table ---
+function getFilteredAutos() {
+  let list = [...(appData.automations || [])];
+  const status = document.getElementById('autoStatus')?.value;
+  const search = document.getElementById('autoSearch')?.value?.toLowerCase();
+  if (status) list = list.filter(a => a.status === status);
+  if (search) list = list.filter(a => a.name?.toLowerCase().includes(search));
+  list.sort((a, b) => {
+    const va = a[autoSort.key] ?? '', vb = b[autoSort.key] ?? '';
+    const cmp = typeof va === 'number' ? va - vb : String(va).localeCompare(String(vb));
+    return autoSort.dir === 'asc' ? cmp : -cmp;
+  });
+  return list;
+}
+
+function renderAutoTable() {
+  const filtered = getFilteredAutos();
+  document.getElementById('autoTable').innerHTML = filtered.length === 0
+    ? '<tr><td colspan="7" style="text-align:center;color:var(--text-dim);padding:20px">No automations. Click Sync SendPulse to load.</td></tr>'
+    : filtered.map(a => `<tr onclick="showAutoDetail(${a.id})" style="cursor:pointer">
+      <td><strong>${esc(a.name)}</strong></td>
+      <td><span class="status-badge ${a.status}">${a.status}</span></td>
+      <td>${esc(a.senderEmail)}</td>
+      <td>${a.starts.toLocaleString()}</td><td>${a.sendMessages.toLocaleString()}</td>
+      <td>${a.emailStepCount}</td>
+      <td>${a.lastActivity ? a.lastActivity.substring(0, 16) : '-'}</td>
+    </tr>`).join('');
+}
+
+function showAutoDetail(id) {
+  const a = (appData.automations || []).find(x => x.id === id);
+  if (!a) return;
+  document.getElementById('autoDetailTitle').textContent = a.name + ' - Email Steps';
+  document.getElementById('autoDetailTable').innerHTML = (a.emailSteps || []).map(s => `<tr>
+    <td>${esc(s.subject)}</td><td>${esc(s.sender)}</td><td>${s.lastSend ? s.lastSend.substring(0, 16) : '-'}</td>
+  </tr>`).join('');
+  document.getElementById('autoDetail').style.display = '';
+}
+function closeAutoDetail() { document.getElementById('autoDetail').style.display = 'none'; }
+
+['autoStatus','autoSearch'].forEach(id => {
+  const el = document.getElementById(id);
+  el?.addEventListener('input', renderAutoTable);
+  el?.addEventListener('change', renderAutoTable);
+});
+document.addEventListener('click', e => {
+  if (e.target.matches('#tab-automations th[data-asort]')) {
+    const key = e.target.dataset.asort;
+    if (autoSort.key === key) autoSort.dir = autoSort.dir === 'asc' ? 'desc' : 'asc';
+    else { autoSort.key = key; autoSort.dir = 'desc'; }
+    renderAutoTable();
+  }
+});
+
+// --- Postmaster table ---
+function renderPostmasterTable() {
+  const pm = appData.postmaster;
+  document.getElementById('pmTable').innerHTML = pm.length === 0
+    ? '<tr><td colspan="7" style="text-align:center;color:var(--text-dim);padding:20px">No data yet. Add entries above or import from Excel.</td></tr>'
+    : pm.map(p => {
+      const spamColor = p.spamRate > 0.3 ? 'var(--red)' : p.spamRate > 0.1 ? 'var(--yellow)' : 'var(--green)';
+      return `<tr>
+        <td>${p.weekEnding}</td>
+        <td style="color:${spamColor}">${p.spamRate}</td><td>${p.spfPass}</td><td>${p.dkimPass}</td><td>${p.dmarcPass}</td>
+        <td>${esc(p.notes || '')}</td>
+        <td><button class="btn btn-sm" onclick="deletePostmaster('${p.weekEnding}')">✕</button></td>
+      </tr>`;
+    }).join('');
+}
+
+// --- Postmaster form ---
+async function savePostmaster(e) {
+  e.preventDefault();
+  const entry = {
+    weekEnding: document.getElementById('pmWeekEnding').value,
+    domain: 'snov.io',
+    spamRate: parseFloat(document.getElementById('pmSpam').value) || 0,
+    spfPass: parseFloat(document.getElementById('pmSpf').value) || 0,
+    dkimPass: parseFloat(document.getElementById('pmDkim').value) || 0,
+    dmarcPass: parseFloat(document.getElementById('pmDmarc').value) || 0,
+    notes: document.getElementById('pmNotes').value
+  };
+  await fetch('/api/postmaster', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(entry) });
+  appData = await (await fetch('/api/data')).json();
+  renderAll();
+  showToast('Postmaster entry saved');
+  ['pmSpam','pmSpf','pmDkim','pmDmarc','pmNotes'].forEach(id => document.getElementById(id).value = '');
+}
+
+async function deletePostmaster(weekEnding) {
+  await fetch('/api/postmaster/' + weekEnding, { method: 'DELETE' });
+  appData = await (await fetch('/api/data')).json();
+  renderAll();
+  showToast('Entry deleted');
+}
+
+// --- Sync ---
+async function syncAll() {
+  const btn = document.getElementById('btnSync');
+  btn.disabled = true; btn.textContent = 'Syncing campaigns...';
+  try {
+    const campRes = await fetch('/api/sync-campaigns', { method: 'POST' });
+    const campResult = await campRes.json();
+
+    btn.textContent = 'Syncing automations...';
+    const autoRes = await fetch('/api/sync-automations', { method: 'POST' });
+    const autoResult = await autoRes.json();
+
+    appData = await (await fetch('/api/data')).json();
+    updateSyncInfo();
+    renderAll();
+    showToast(`Synced ${campResult.totalCampaigns} campaigns + ${autoResult.totalFlows} A360 flows (${autoResult.activeFlows} active)`);
+  } catch (err) { showToast('Sync error: ' + err.message); }
+  btn.disabled = false; btn.textContent = 'Sync SendPulse';
+}
+
+async function importExcel() {
+  const btn = document.getElementById('btnImport');
+  btn.disabled = true; btn.textContent = 'Importing...';
+  try {
+    const res = await fetch('/api/import-excel', { method: 'POST' });
+    const result = await res.json();
+    if (result.success) {
+      showToast(`Imported ${result.postmasterEntries} weekly postmaster entries`);
+      appData = await (await fetch('/api/data')).json();
+      renderAll();
+    } else showToast('Import failed: ' + result.error);
+  } catch (err) { showToast('Import error: ' + err.message); }
+  btn.disabled = false; btn.textContent = 'Import Excel';
+}
+
+// --- Helpers ---
+function esc(str) { const d = document.createElement('div'); d.textContent = str || ''; return d.innerHTML; }
+function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3500); }
+
+init();
+</script>
+</body>
+</html>

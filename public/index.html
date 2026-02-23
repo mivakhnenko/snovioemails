@@ -101,6 +101,14 @@
   .section-title { font-size: 13px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; margin: 24px 0 12px; }
   .section-title:first-child { margin-top: 0; }
 
+  .info-icon { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 50%; background: var(--surface2); border: 1px solid var(--border); color: var(--text-dim); font-size: 10px; font-weight: 700; cursor: help; position: relative; vertical-align: middle; margin-left: 4px; font-style: normal; line-height: 1; flex-shrink: 0; }
+  .info-icon:hover { background: var(--border); color: var(--text); }
+  .info-tip { display: none; position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; font-size: 11px; font-weight: 400; color: var(--text); line-height: 1.5; width: 260px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); z-index: 100; text-transform: none; letter-spacing: normal; white-space: normal; }
+  .info-tip::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 6px solid transparent; border-top-color: var(--border); }
+  .info-icon:hover .info-tip { display: block; }
+  .info-tip strong { color: var(--accent-light); }
+  .info-tip .tip-src { color: var(--text-dim); font-size: 10px; margin-top: 4px; display: block; }
+
   @media (max-width: 768px) {
     .chart-row { grid-template-columns: 1fr; }
     .score-grid { grid-template-columns: repeat(2, 1fr); }
@@ -140,35 +148,35 @@
 
     <div class="score-grid" id="scoreCards"></div>
 
-    <div class="section-title">Campaign Trends</div>
+    <div class="section-title">Campaign Trends <i class="info-icon">?<span class="info-tip">Weekly averages of campaign performance metrics from SendPulse. Each data point represents the average across all campaigns sent that week.<span class="tip-src">Source: SendPulse API /campaigns</span></span></i></div>
     <div class="chart-row">
       <div class="chart-box">
-        <h3>Open & Click Rates</h3>
+        <h3>Open & Click Rates <i class="info-icon">?<span class="info-tip"><strong>Open Rate</strong> = Opens / Delivered. Tracked via a pixel in the email.<br><strong>Click Rate</strong> = Link Clicks / Delivered.<br><br>Each point is the weekly average across all campaigns sent that week. Higher is better.<span class="tip-src">Source: SendPulse API /campaigns</span></span></i></h3>
         <canvas id="chartPerformance"></canvas>
       </div>
       <div class="chart-box">
-        <h3>Bounce & Unsubscribe Rates</h3>
+        <h3>Bounce & Unsubscribe Rates <i class="info-icon">?<span class="info-tip"><strong>Bounce Rate</strong> = Bounced / Sent. Includes hard + soft bounces.<br><strong>Unsub Rate</strong> = Unsubscribes / Delivered.<br><br>Each point is the weekly average. Lower is better. Watch for sudden spikes.<span class="tip-src">Source: SendPulse API /campaigns</span></span></i></h3>
         <canvas id="chartHealth"></canvas>
       </div>
     </div>
 
-    <div class="section-title">Google Postmaster Trends</div>
+    <div class="section-title">Google Postmaster Trends <i class="info-icon">?<span class="info-tip">Data from Google Postmaster Tools, entered manually each week. Shows how Gmail sees your emails. These metrics directly affect inbox placement for Gmail recipients.<span class="tip-src">Source: Google Postmaster (manual entry)</span></span></i></div>
     <div class="chart-row">
       <div class="chart-box">
-        <h3>Spam Rate (weekly)</h3>
+        <h3>Spam Rate (weekly) <i class="info-icon">?<span class="info-tip"><strong>User-reported spam rate</strong> from Google Postmaster. This is the % of recipients who clicked "Report Spam" in Gmail.<br><br>Google recommends keeping this <strong>below 0.1%</strong> and never exceeding 0.3%. Sustained high rates can cause Gmail to send your emails to spam.<span class="tip-src">Source: Google Postmaster (manual entry)</span></span></i></h3>
         <canvas id="chartSpamRate"></canvas>
       </div>
       <div class="chart-box">
-        <h3>Authentication Rates (weekly)</h3>
+        <h3>Authentication Rates (weekly) <i class="info-icon">?<span class="info-tip"><strong>SPF</strong>: Sender Policy Framework \u2014 verifies the sending server is authorized.<br><strong>DKIM</strong>: DomainKeys Identified Mail \u2014 verifies email hasn't been tampered with.<br><strong>DMARC</strong>: Domain-based Message Authentication \u2014 policy that ties SPF + DKIM together.<br><br>All three should be as close to 100% as possible.<span class="tip-src">Source: Google Postmaster (manual entry)</span></span></i></h3>
         <canvas id="chartAuth"></canvas>
       </div>
     </div>
 
-    <div class="section-title">Automation 360 Overview</div>
+    <div class="section-title">Automation 360 Overview <i class="info-icon">?<span class="info-tip">Summary of SendPulse Automation 360 flows (automated email sequences). Includes onboarding, lifecycle, drip campaigns, etc. Only active flows are counted here.<br><br>Note: the SendPulse A360 API only provides flow-level totals (starts, emails sent), not per-email delivery stats.<span class="tip-src">Source: SendPulse API /a360/autoresponders</span></span></i></div>
     <div class="score-grid" id="a360ScoreCards"></div>
 
     <div class="table-wrap">
-      <h3>Recent Flagged Campaigns</h3>
+      <h3>Recent Flagged Campaigns <i class="info-icon">?<span class="info-tip">Campaigns from the selected period flagged as <strong>Warning</strong> or <strong>Critical</strong> based on their metrics.<br><br>Thresholds:<br>• <strong>Bounce</strong>: healthy &lt;2%, warning 2–5%, critical &gt;5%<br>• <strong>Unsub</strong>: healthy &lt;0.5%, warning 0.5–1%, critical &gt;1%<br>• <strong>Opens</strong>: healthy &gt;15%, warning 10–15%, critical &lt;10%<br><br>Click column headers to sort. See full list in the Campaigns tab.<span class="tip-src">Source: SendPulse API /campaigns</span></span></i></h3>
       <table>
         <thead><tr><th>Date</th><th>Campaign</th><th>Flag</th><th>Open %</th><th>Bounce %</th><th>Unsub %</th><th>Issue</th></tr></thead>
         <tbody id="flaggedTable"></tbody>
@@ -229,7 +237,7 @@
   <!-- POSTMASTER TAB -->
   <div class="tab-content" id="tab-postmaster">
     <div class="form-section">
-      <h3>Add Weekly Postmaster Entry</h3>
+      <h3>Add Weekly Postmaster Entry <i class="info-icon">?<span class="info-tip">Manually enter weekly averages from <strong>Google Postmaster Tools</strong>. Go to <em>postmaster.google.com</em>, select snov.io, and record the average spam rate and authentication rates for the week.<br><br>"Week Ending" should be the Sunday date that closes the week. If Postmaster gives daily values, average them for the week.<span class="tip-src">Source: Google Postmaster Tools</span></span></i></h3>
       <p style="font-size:12px;color:var(--text-dim);margin-bottom:14px">Enter the average values from Google Postmaster for the week. Week ending = Sunday date.</p>
       <form id="pmForm" onsubmit="savePostmaster(event)">
         <div class="form-grid">
@@ -244,7 +252,7 @@
       </form>
     </div>
     <div class="table-wrap">
-      <h3>Postmaster Weekly Log</h3>
+      <h3>Postmaster Weekly Log <i class="info-icon">?<span class="info-tip">Historical log of all weekly Postmaster entries. Each row is one week's averages.<br><br><strong>Spam %</strong> — user-reported spam rate (keep below 0.3%)<br><strong>SPF/DKIM/DMARC %</strong> — authentication pass rates (aim for 100%)<br><br>Click the ✕ button to delete an entry.<span class="tip-src">Source: Google Postmaster (manual entry)</span></span></i></h3>
       <table>
         <thead><tr><th>Week Ending</th><th>Spam %</th><th>SPF %</th><th>DKIM %</th><th>DMARC %</th><th>Notes</th><th></th></tr></thead>
         <tbody id="pmTable"></tbody>
@@ -364,14 +372,22 @@ function renderScoreCards() {
 
   const f1 = v => v != null ? v.toFixed(1) + '%' : 'N/A';
   const metrics = [
-    { label: 'Campaigns Sent', value: current.length, sub: `${totalSent.toLocaleString()} emails total` },
-    { label: 'Delivery Rate', value: f1(deliveryRate), status: deliveryRate > 98 ? 'healthy' : deliveryRate > 95 ? 'warning' : 'critical', sub: 'Delivered / Sent' },
-    { label: 'Avg Open Rate', value: f1(avg(current, 'openRate')), current: avg(current, 'openRate'), prev: avg(prev, 'openRate'), reverse: true, status: avgStatus(avg(current, 'openRate'), 'openRate', true) },
-    { label: 'Avg Click Rate', value: f1(avg(current, 'clickRate')), current: avg(current, 'clickRate'), prev: avg(prev, 'clickRate'), reverse: true },
-    { label: 'Avg Bounce Rate', value: f1(avg(current, 'bounceRate')), current: avg(current, 'bounceRate'), prev: avg(prev, 'bounceRate'), status: avgStatus(avg(current, 'bounceRate'), 'bounceRate') },
-    { label: 'Avg Unsub Rate', value: f1(avg(current, 'unsubRate')), current: avg(current, 'unsubRate'), prev: avg(prev, 'unsubRate') },
-    { label: 'Postmaster Spam', value: pm.length > 0 ? f1(avg(pm, 'spamRate')) : 'N/A', current: avg(pm, 'spamRate'), prev: avg(pmPrev, 'spamRate'), sub: pm.length + ' weeks of data' },
-    { label: 'Flagged Campaigns', value: current.filter(c => getFlag(c) !== 'healthy').length, sub: `of ${current.length} total` },
+    { label: 'Campaigns Sent', value: current.length, sub: `${totalSent.toLocaleString()} emails total`,
+      tip: 'Total number of campaigns sent in the selected period. Each campaign is a single email blast to a list.<span class="tip-src">Source: SendPulse API /campaigns</span>' },
+    { label: 'Delivery Rate', value: f1(deliveryRate), status: deliveryRate > 98 ? 'healthy' : deliveryRate > 95 ? 'warning' : 'critical', sub: 'Delivered / Sent',
+      tip: '<strong>Delivered \u00F7 Sent \u00D7 100%</strong>. Percentage of emails accepted by recipients\u2019 mail servers. Emails that bounce (hard or soft) are not delivered.<br><br>Healthy: &gt;98% | Warning: 95\u201398% | Critical: &lt;95%<span class="tip-src">Source: SendPulse API /campaigns</span>' },
+    { label: 'Avg Open Rate', value: f1(avg(current, 'openRate')), current: avg(current, 'openRate'), prev: avg(prev, 'openRate'), reverse: true, status: avgStatus(avg(current, 'openRate'), 'openRate', true),
+      tip: '<strong>Opens \u00F7 Delivered \u00D7 100%</strong>. Average across all campaigns. Tracks how many recipients opened the email (via tracking pixel).<br><br>Healthy: &gt;15% | Warning: 10\u201315% | Critical: &lt;10%<span class="tip-src">Source: SendPulse API /campaigns</span>' },
+    { label: 'Avg Click Rate', value: f1(avg(current, 'clickRate')), current: avg(current, 'clickRate'), prev: avg(prev, 'clickRate'), reverse: true,
+      tip: '<strong>Clicks \u00F7 Delivered \u00D7 100%</strong>. Average across all campaigns. Measures how many recipients clicked a link in the email.<span class="tip-src">Source: SendPulse API /campaigns</span>' },
+    { label: 'Avg Bounce Rate', value: f1(avg(current, 'bounceRate')), current: avg(current, 'bounceRate'), prev: avg(prev, 'bounceRate'), status: avgStatus(avg(current, 'bounceRate'), 'bounceRate'),
+      tip: '<strong>Bounced \u00F7 Sent \u00D7 100%</strong>. Average across all campaigns. Includes hard bounces (invalid address) and soft bounces (full inbox, server issues).<br><br>Healthy: &lt;2% | Warning: 2\u20135% | Critical: &gt;5%<span class="tip-src">Source: SendPulse API /campaigns</span>' },
+    { label: 'Avg Unsub Rate', value: f1(avg(current, 'unsubRate')), current: avg(current, 'unsubRate'), prev: avg(prev, 'unsubRate'),
+      tip: '<strong>Unsubscribes \u00F7 Delivered \u00D7 100%</strong>. Average across all campaigns. High unsub rate may signal irrelevant content or too-frequent sends.<br><br>Healthy: &lt;0.5% | Warning: 0.5\u20131% | Critical: &gt;1%<span class="tip-src">Source: SendPulse API /campaigns</span>' },
+    { label: 'Postmaster Spam', value: pm.length > 0 ? f1(avg(pm, 'spamRate')) : 'N/A', current: avg(pm, 'spamRate'), prev: avg(pmPrev, 'spamRate'), sub: pm.length + ' weeks of data',
+      tip: 'Average <strong>user-reported spam rate</strong> from Google Postmaster Tools for the selected period. This is the % of recipients who clicked "Report Spam" in Gmail.<br><br>Keep below 0.3% to avoid deliverability issues.<span class="tip-src">Source: Google Postmaster (manual entry)</span>' },
+    { label: 'Flagged Campaigns', value: current.filter(c => getFlag(c) !== 'healthy').length, sub: `of ${current.length} total`,
+      tip: 'Campaigns flagged based on thresholds:<br>\u2022 <strong>Warning</strong>: bounce &gt;2%, unsub &gt;0.5%, or opens &lt;10%<br>\u2022 <strong>Critical</strong>: bounce &gt;5% or unsub &gt;1%<br><br>Click the Campaigns tab to see details and sort by any metric.' },
   ];
 
   document.getElementById('scoreCards').innerHTML = metrics.map(m => {
@@ -387,7 +403,8 @@ function renderScoreCards() {
     let statusHtml = '';
     if (m.status) statusHtml = `<span class="health-badge ${m.status}" style="margin-left:8px;font-size:10px">${m.status}</span>`;
     let subHtml = m.sub ? `<div class="sub">${m.sub}</div>` : '';
-    return `<div class="score-card"><div class="label">${m.label}</div><div class="value">${m.value}${statusHtml}</div>${subHtml}${changeHtml}</div>`;
+    const tipHtml = m.tip ? tip(m.tip) : '';
+    return `<div class="score-card"><div class="label">${m.label}${tipHtml}</div><div class="value">${m.value}${statusHtml}</div>${subHtml}${changeHtml}</div>`;
   }).join('');
 }
 
@@ -408,15 +425,20 @@ function renderA360ScoreCards() {
   const totalSteps = active.reduce((s, a) => s + a.emailStepCount, 0);
 
   const cards = [
-    { label: 'Active Flows', value: active.length, sub: `${auto.length} total flows` },
-    { label: 'Total Starts', value: totalStarts.toLocaleString(), sub: 'People entered flows' },
-    { label: 'Emails Sent (A360)', value: totalSent.toLocaleString(), sub: 'All active flows combined' },
-    { label: 'Email Steps', value: totalSteps, sub: 'Across active flows' },
+    { label: 'Active Flows', value: active.length, sub: `${auto.length} total flows`,
+      tip: 'Number of Automation 360 flows currently active (running). Includes onboarding sequences, drip campaigns, lifecycle emails, etc.<span class="tip-src">Source: SendPulse API /a360/autoresponders</span>' },
+    { label: 'Total Starts', value: totalStarts.toLocaleString(), sub: 'People entered flows',
+      tip: 'Total number of people who have entered any active automation flow. One person can start multiple flows.<span class="tip-src">Source: SendPulse API /a360/autoresponders</span>' },
+    { label: 'Emails Sent (A360)', value: totalSent.toLocaleString(), sub: 'All active flows combined',
+      tip: 'Total emails sent across all active A360 flows combined. Note: per-email open/click/bounce stats are not available via the SendPulse A360 API \u2014 only total send counts.<span class="tip-src">Source: SendPulse API /a360/autoresponders</span>' },
+    { label: 'Email Steps', value: totalSteps, sub: 'Across active flows',
+      tip: 'Total number of email steps (individual emails) configured across all active flows. Click a flow in the Automations tab to see its email steps.<span class="tip-src">Source: SendPulse API /a360/autoresponders</span>' },
   ];
 
-  document.getElementById('a360ScoreCards').innerHTML = cards.map(m =>
-    `<div class="score-card"><div class="label">${m.label}</div><div class="value">${m.value}</div><div class="sub">${m.sub}</div></div>`
-  ).join('');
+  document.getElementById('a360ScoreCards').innerHTML = cards.map(m => {
+    const tipHtml = m.tip ? tip(m.tip) : '';
+    return `<div class="score-card"><div class="label">${m.label}${tipHtml}</div><div class="value">${m.value}</div><div class="sub">${m.sub}</div></div>`;
+  }).join('');
 }
 
 // --- Charts (weekly aggregated) ---
@@ -729,6 +751,11 @@ async function restorePostmaster() {
     showToast(`Restored ${result.count} Postmaster entries`);
   } catch (err) { showToast('Restore error: ' + err.message); }
   btn.disabled = false; btn.textContent = 'Restore Postmaster';
+}
+
+// --- Info tooltips ---
+function tip(text) {
+  return `<i class="info-icon">?<span class="info-tip">${text}</span></i>`;
 }
 
 // --- Helpers ---

@@ -7,6 +7,7 @@ node_modules/
 *.json
 !package.json
 !package-lock.json
+!pm-seed.json
 *.js
 !server.js
 *.md

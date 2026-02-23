@@ -1,0 +1,270 @@
+[
+  {
+    "weekEnding": "2026-02-22",
+    "domain": "snov.io",
+    "spamRate": 0.133,
+    "spfPass": 100,
+    "dkimPass": 100,
+    "dmarcPass": 100,
+    "daysReported": 3,
+    "notes": "From Postmaster daily data (3 days)"
+  },
+  {
+    "weekEnding": "2026-02-15",
+    "domain": "snov.io",
+    "spamRate": 0.125,
+    "spfPass": 100,
+    "dkimPass": 100,
+    "dmarcPass": 100,
+    "daysReported": 4,
+    "notes": "From Postmaster daily data (4 days)"
+  },
+  {
+    "weekEnding": "2026-02-08",
+    "domain": "snov.io",
+    "spamRate": 0.167,
+    "spfPass": 100,
+    "dkimPass": 100,
+    "dmarcPass": 100,
+    "daysReported": 6,
+    "notes": "From Postmaster daily data (6 days)"
+  },
+  {
+    "weekEnding": "2026-02-01",
+    "domain": "snov.io",
+    "spamRate": 0.22,
+    "spfPass": 100,
+    "dkimPass": 100,
+    "dmarcPass": 100,
+    "daysReported": 5,
+    "notes": "From Postmaster daily data (5 days)"
+  },
+  {
+    "weekEnding": "2026-01-25",
+    "domain": "snov.io",
+    "spamRate": 0.1,
+    "spfPass": 100,
+    "dkimPass": 100,
+    "dmarcPass": 100,
+    "daysReported": 6,
+    "notes": "From Postmaster daily data (6 days)"
+  },
+  {
+    "weekEnding": "2026-01-18",
+    "domain": "snov.io",
+    "spamRate": 0.143,
+    "spfPass": 100,
+    "dkimPass": 100,
+    "dmarcPass": 100,
+    "daysReported": 7,
+    "notes": "From Postmaster daily data (7 days)"
+  },
+  {
+    "weekEnding": "2026-01-11",
+    "domain": "snov.io",
+    "spamRate": 0.167,
+    "spfPass": 100,
+    "dkimPass": 100,
+    "dmarcPass": 100,
+    "daysReported": 6,
+    "notes": "From Postmaster daily data (6 days)"
+  },
+  {
+    "weekEnding": "2026-01-04",
+    "domain": "snov.io",
+    "spamRate": 0.186,
+    "spfPass": 100,
+    "dkimPass": 100,
+    "dmarcPass": 100,
+    "daysReported": 7,
+    "notes": "From Postmaster daily data (7 days)"
+  },
+  {
+    "weekEnding": "2025-12-28",
+    "domain": "snov.io",
+    "spamRate": 0.143,
+    "spfPass": 100,
+    "dkimPass": 100,
+    "dmarcPass": 100,
+    "daysReported": 7,
+    "notes": "From Postmaster daily data (7 days)"
+  },
+  {
+    "weekEnding": "2025-12-21",
+    "domain": "snov.io",
+    "spamRate": 0.125,
+    "spfPass": 100,
+    "dkimPass": 100,
+    "dmarcPass": 100,
+    "daysReported": 4,
+    "notes": "From Postmaster daily data (4 days)"
+  },
+  {
+    "weekEnding": "2025-12-14",
+    "domain": "snov.io",
+    "spamRate": 0.08,
+    "spfPass": 100,
+    "dkimPass": 100,
+    "dmarcPass": 100,
+    "daysReported": 5,
+    "notes": "From Postmaster daily data (5 days)"
+  },
+  {
+    "weekEnding": "2025-12-07",
+    "domain": "snov.io",
+    "spamRate": 0.06,
+    "spfPass": 100,
+    "dkimPass": 100,
+    "dmarcPass": 100,
+    "daysReported": 5,
+    "notes": "From Postmaster daily data (5 days)"
+  },
+  {
+    "weekEnding": "2025-11-30",
+    "domain": "snov.io",
+    "spamRate": 0.075,
+    "spfPass": 100,
+    "dkimPass": 100,
+    "dmarcPass": 100,
+    "daysReported": 4,
+    "notes": "From Postmaster daily data (4 days)"
+  },
+  {
+    "weekEnding": "2025-11-23",
+    "domain": "snov.io",
+    "spamRate": 0.071,
+    "spfPass": 100,
+    "dkimPass": 100,
+    "dmarcPass": 100,
+    "daysReported": 7,
+    "notes": "From Postmaster daily data (7 days)"
+  },
+  {
+    "weekEnding": "2025-11-16",
+    "domain": "snov.io",
+    "spamRate": 0.1,
+    "spfPass": 100,
+    "dkimPass": 100,
+    "dmarcPass": 100,
+    "daysReported": 4,
+    "notes": "From Postmaster daily data (4 days)"
+  },
+  {
+    "weekEnding": "2025-11-09",
+    "domain": "snov.io",
+    "spamRate": 0.06,
+    "spfPass": 100,
+    "dkimPass": 100,
+    "dmarcPass": 100,
+    "daysReported": 5,
+    "notes": "From Postmaster daily data (5 days)"
+  },
+  {
+    "weekEnding": "2025-11-02",
+    "domain": "snov.io",
+    "spamRate": 0.057,
+    "spfPass": 100,
+    "dkimPass": 100,
+    "dmarcPass": 100,
+    "daysReported": 7,
+    "notes": "From Postmaster daily data (7 days)"
+  },
+  {
+    "weekEnding": "2025-10-26",
+    "domain": "snov.io",
+    "spamRate": 0,
+    "spfPass": 100,
+    "dkimPass": 100,
+    "dmarcPass": 100,
+    "daysReported": 1,
+    "notes": "From Postmaster daily data (1 days)"
+  },
+  {
+    "weekEnding": "2025-01-19",
+    "domain": "snov.io",
+    "reputation": "High",
+    "spamRate": 0.089,
+    "spfPass": 99.1,
+    "dkimPass": 99.1,
+    "dmarcPass": 98.6,
+    "daysReported": 7,
+    "notes": ""
+  },
+  {
+    "weekEnding": "2025-01-12",
+    "domain": "snov.io",
+    "reputation": "High",
+    "spamRate": 0.085,
+    "spfPass": 99.3,
+    "dkimPass": 99.1,
+    "dmarcPass": 99,
+    "daysReported": 7,
+    "notes": ""
+  },
+  {
+    "weekEnding": "2025-01-05",
+    "domain": "snov.io",
+    "reputation": "High",
+    "spamRate": 0.085,
+    "spfPass": 99.1,
+    "dkimPass": 99.1,
+    "dmarcPass": 98.9,
+    "daysReported": 7,
+    "notes": ""
+  },
+  {
+    "weekEnding": "2024-12-29",
+    "domain": "snov.io",
+    "reputation": "Medium",
+    "spamRate": 0.171,
+    "spfPass": 99.1,
+    "dkimPass": 99.3,
+    "dmarcPass": 99,
+    "daysReported": 7,
+    "notes": ""
+  },
+  {
+    "weekEnding": "2024-12-22",
+    "domain": "snov.io",
+    "reputation": "Medium",
+    "spamRate": 0.183,
+    "spfPass": 99,
+    "dkimPass": 99,
+    "dmarcPass": 98.9,
+    "daysReported": 7,
+    "notes": ""
+  },
+  {
+    "weekEnding": "2024-12-15",
+    "domain": "snov.io",
+    "reputation": "High",
+    "spamRate": 0.085,
+    "spfPass": 99.1,
+    "dkimPass": 98.9,
+    "dmarcPass": 99.3,
+    "daysReported": 7,
+    "notes": ""
+  },
+  {
+    "weekEnding": "2024-12-08",
+    "domain": "snov.io",
+    "reputation": "High",
+    "spamRate": 0.089,
+    "spfPass": 99.1,
+    "dkimPass": 99.1,
+    "dmarcPass": 98.8,
+    "daysReported": 7,
+    "notes": ""
+  },
+  {
+    "weekEnding": "2024-12-01",
+    "domain": "snov.io",
+    "reputation": "High",
+    "spamRate": 0.095,
+    "spfPass": 99.2,
+    "dkimPass": 99.2,
+    "dmarcPass": 99,
+    "daysReported": 7,
+    "notes": ""
+  }
+]

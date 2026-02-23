@@ -15,6 +15,8 @@ const SP_CLIENT_ID = process.env.SP_CLIENT_ID || '11aac0b4113b6f096c419464573da3
 const SP_CLIENT_SECRET = process.env.SP_CLIENT_SECRET || '7f81749453948cda9469449576f43637';
 
 // --- Data persistence ---
+const PM_SEED = path.join(__dirname, 'pm-seed.json');
+
 function loadData() {
   try {
     return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
@@ -26,6 +28,21 @@ function loadData() {
 function saveData(data) {
   fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
 }
+
+// Seed postmaster from pm-seed.json on first start (survives Render redeploys)
+(function seedPostmaster() {
+  const data = loadData();
+  if (data.postmaster.length === 0) {
+    try {
+      const seed = JSON.parse(fs.readFileSync(PM_SEED, 'utf8'));
+      if (Array.isArray(seed) && seed.length > 0) {
+        data.postmaster = seed;
+        saveData(data);
+        console.log(`Seeded ${seed.length} Postmaster entries from pm-seed.json`);
+      }
+    } catch { /* no seed file, that's ok */ }
+  }
+})();
 
 // --- SendPulse API helpers ---
 let spToken = null;

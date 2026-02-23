@@ -223,6 +223,25 @@ app.post('/api/postmaster', (req, res) => {
   res.json({ success: true });
 });
 
+// Bulk import postmaster entries (replaces all)
+app.post('/api/postmaster/bulk', (req, res) => {
+  try {
+    const entries = req.body;
+    if (!Array.isArray(entries)) return res.status(400).json({ error: 'Expected array of entries' });
+    const data = loadData();
+    entries.forEach(entry => {
+      const idx = data.postmaster.findIndex(p => p.weekEnding === entry.weekEnding);
+      if (idx >= 0) data.postmaster[idx] = entry;
+      else data.postmaster.push(entry);
+    });
+    data.postmaster.sort((a, b) => b.weekEnding.localeCompare(a.weekEnding));
+    saveData(data);
+    res.json({ success: true, count: data.postmaster.length });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Delete postmaster entry
 app.delete('/api/postmaster/:weekEnding', (req, res) => {
   const data = loadData();

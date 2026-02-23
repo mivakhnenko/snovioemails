@@ -115,6 +115,7 @@
   <h1><span class="logo">Snov.io</span> Deliverability Dashboard</h1>
   <div class="header-actions">
     <span class="sync-info" id="lastSync"></span>
+    <button class="btn" id="btnRestore" onclick="restorePostmaster()" style="display:none">Restore Postmaster</button>
     <button class="btn btn-primary" id="btnSync" onclick="syncAll()">Sync SendPulse</button>
   </div>
 </div>
@@ -273,6 +274,16 @@ const THRESHOLDS = {
 async function init() {
   const res = await fetch('/api/data');
   appData = await res.json();
+  // Backup postmaster to localStorage whenever we have data
+  if (appData.postmaster.length > 0) {
+    localStorage.setItem('pm_backup', JSON.stringify(appData.postmaster));
+  }
+  // Show restore button if server has no postmaster but localStorage does
+  const pmBackup = localStorage.getItem('pm_backup');
+  if (appData.postmaster.length === 0 && pmBackup) {
+    const saved = JSON.parse(pmBackup);
+    if (saved.length > 0) document.getElementById('btnRestore').style.display = '';
+  }
   updateSyncInfo();
   renderAll();
   // Set default postmaster date to last Sunday
@@ -669,6 +680,7 @@ async function savePostmaster(e) {
   };
   await fetch('/api/postmaster', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(entry) });
   appData = await (await fetch('/api/data')).json();
+  if (appData.postmaster.length > 0) localStorage.setItem('pm_backup', JSON.stringify(appData.postmaster));
   renderAll();
   showToast('Postmaster entry saved');
   ['pmSpam','pmSpf','pmDkim','pmDmarc','pmNotes'].forEach(id => document.getElementById(id).value = '');
@@ -699,6 +711,23 @@ async function syncAll() {
     showToast(`Synced ${campResult.totalCampaigns} campaigns + ${autoResult.totalFlows} A360 flows (${autoResult.activeFlows} active)`);
   } catch (err) { showToast('Sync error: ' + err.message); }
   btn.disabled = false; btn.textContent = 'Sync SendPulse';
+}
+
+async function restorePostmaster() {
+  const btn = document.getElementById('btnRestore');
+  const pmBackup = localStorage.getItem('pm_backup');
+  if (!pmBackup) { showToast('No backup found'); return; }
+  const entries = JSON.parse(pmBackup);
+  btn.disabled = true; btn.textContent = 'Restoring...';
+  try {
+    const res = await fetch('/api/postmaster/bulk', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(entries) });
+    const result = await res.json();
+    appData = await (await fetch('/api/data')).json();
+    renderAll();
+    btn.style.display = 'none';
+    showToast(`Restored ${result.count} Postmaster entries`);
+  } catch (err) { showToast('Restore error: ' + err.message); }
+  btn.disabled = false; btn.textContent = 'Restore Postmaster';
 }
 
 // --- Helpers ---

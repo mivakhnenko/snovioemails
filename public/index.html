@@ -362,14 +362,15 @@ function renderScoreCards() {
   const totalDelivered = sum(current, 'delivered');
   const deliveryRate = totalSent > 0 ? (totalDelivered / totalSent * 100) : null;
 
+  const f1 = v => v != null ? v.toFixed(1) + '%' : 'N/A';
   const metrics = [
     { label: 'Campaigns Sent', value: current.length, sub: `${totalSent.toLocaleString()} emails total` },
-    { label: 'Delivery Rate', value: deliveryRate !== null ? deliveryRate.toFixed(1) + '%' : 'N/A', status: deliveryRate > 98 ? 'healthy' : deliveryRate > 95 ? 'warning' : 'critical' },
-    { label: 'Avg Open Rate', value: avg(current, 'openRate')?.toFixed(1) + '%' || 'N/A', current: avg(current, 'openRate'), prev: avg(prev, 'openRate'), reverse: true, status: avgStatus(avg(current, 'openRate'), 'openRate', true) },
-    { label: 'Avg Click Rate', value: avg(current, 'clickRate')?.toFixed(2) + '%' || 'N/A', current: avg(current, 'clickRate'), prev: avg(prev, 'clickRate'), reverse: true },
-    { label: 'Avg Bounce Rate', value: avg(current, 'bounceRate')?.toFixed(2) + '%' || 'N/A', current: avg(current, 'bounceRate'), prev: avg(prev, 'bounceRate'), status: avgStatus(avg(current, 'bounceRate'), 'bounceRate') },
-    { label: 'Avg Unsub Rate', value: avg(current, 'unsubRate')?.toFixed(3) + '%' || 'N/A', current: avg(current, 'unsubRate'), prev: avg(prev, 'unsubRate') },
-    { label: 'Postmaster Spam', value: pm.length > 0 ? avg(pm, 'spamRate')?.toFixed(3) + '%' : 'N/A', current: avg(pm, 'spamRate'), prev: avg(pmPrev, 'spamRate'), sub: pm.length + ' weeks of data' },
+    { label: 'Delivery Rate', value: f1(deliveryRate), status: deliveryRate > 98 ? 'healthy' : deliveryRate > 95 ? 'warning' : 'critical', sub: 'Delivered / Sent' },
+    { label: 'Avg Open Rate', value: f1(avg(current, 'openRate')), current: avg(current, 'openRate'), prev: avg(prev, 'openRate'), reverse: true, status: avgStatus(avg(current, 'openRate'), 'openRate', true) },
+    { label: 'Avg Click Rate', value: f1(avg(current, 'clickRate')), current: avg(current, 'clickRate'), prev: avg(prev, 'clickRate'), reverse: true },
+    { label: 'Avg Bounce Rate', value: f1(avg(current, 'bounceRate')), current: avg(current, 'bounceRate'), prev: avg(prev, 'bounceRate'), status: avgStatus(avg(current, 'bounceRate'), 'bounceRate') },
+    { label: 'Avg Unsub Rate', value: f1(avg(current, 'unsubRate')), current: avg(current, 'unsubRate'), prev: avg(prev, 'unsubRate') },
+    { label: 'Postmaster Spam', value: pm.length > 0 ? f1(avg(pm, 'spamRate')) : 'N/A', current: avg(pm, 'spamRate'), prev: avg(pmPrev, 'spamRate'), sub: pm.length + ' weeks of data' },
     { label: 'Flagged Campaigns', value: current.filter(c => getFlag(c) !== 'healthy').length, sub: `of ${current.length} total` },
   ];
 
@@ -542,7 +543,7 @@ function renderFlaggedTable() {
     ? '<tr><td colspan="7" style="text-align:center;color:var(--text-dim);padding:20px">No flagged campaigns in this period</td></tr>'
     : flagged.map(c => `<tr>
         <td>${c.sendDate?.substring(0, 10)}</td><td>${esc(c.name?.substring(0, 50))}</td><td>${flagEmoji(getFlag(c))}</td>
-        <td>${c.openRate.toFixed(1)}</td><td>${c.bounceRate.toFixed(2)}</td><td>${c.unsubRate.toFixed(3)}</td><td>${flagIssue(c)}</td>
+        <td>${c.openRate.toFixed(1)}</td><td>${c.bounceRate.toFixed(1)}</td><td>${c.unsubRate.toFixed(1)}</td><td>${flagIssue(c)}</td>
       </tr>`).join('');
 }
 
@@ -572,7 +573,7 @@ function renderCampaignTable() {
   document.getElementById('campaignTable').innerHTML = shown.map(c => `<tr>
     <td>${c.sendDate?.substring(0, 10)}</td><td title="${esc(c.subject)}">${esc(c.name?.substring(0, 55))}</td>
     <td>${c.sent.toLocaleString()}</td><td>${c.delivered.toLocaleString()}</td>
-    <td>${c.openRate.toFixed(1)}</td><td>${c.clickRate.toFixed(2)}</td><td>${c.bounceRate.toFixed(2)}</td><td>${c.unsubRate.toFixed(3)}</td><td>${flagEmoji(getFlag(c))}</td>
+    <td>${c.openRate.toFixed(1)}</td><td>${c.clickRate.toFixed(1)}</td><td>${c.bounceRate.toFixed(1)}</td><td>${c.unsubRate.toFixed(1)}</td><td>${flagEmoji(getFlag(c))}</td>
   </tr>`).join('');
   document.getElementById('campShowMore').style.display = end >= filtered.length ? 'none' : '';
   document.querySelectorAll('#tab-campaigns th[data-sort]').forEach(th => {
@@ -659,7 +660,7 @@ function renderPostmasterTable() {
       const spamColor = p.spamRate > 0.3 ? 'var(--red)' : p.spamRate > 0.1 ? 'var(--yellow)' : 'var(--green)';
       return `<tr>
         <td>${p.weekEnding}</td>
-        <td style="color:${spamColor}">${p.spamRate}</td><td>${p.spfPass}</td><td>${p.dkimPass}</td><td>${p.dmarcPass}</td>
+        <td style="color:${spamColor}">${Number(p.spamRate).toFixed(1)}</td><td>${Number(p.spfPass).toFixed(1)}</td><td>${Number(p.dkimPass).toFixed(1)}</td><td>${Number(p.dmarcPass).toFixed(1)}</td>
         <td>${esc(p.notes || '')}</td>
         <td><button class="btn btn-sm" onclick="deletePostmaster('${p.weekEnding}')">✕</button></td>
       </tr>`;

@@ -115,7 +115,6 @@
   <h1><span class="logo">Snov.io</span> Deliverability Dashboard</h1>
   <div class="header-actions">
     <span class="sync-info" id="lastSync"></span>
-    <button class="btn" id="btnImport" onclick="importExcel()">Import Excel</button>
     <button class="btn btn-primary" id="btnSync" onclick="syncAll()">Sync SendPulse</button>
   </div>
 </div>
@@ -700,21 +699,6 @@ async function syncAll() {
     showToast(`Synced ${campResult.totalCampaigns} campaigns + ${autoResult.totalFlows} A360 flows (${autoResult.activeFlows} active)`);
   } catch (err) { showToast('Sync error: ' + err.message); }
   btn.disabled = false; btn.textContent = 'Sync SendPulse';
-}
-
-async function importExcel() {
-  const btn = document.getElementById('btnImport');
-  btn.disabled = true; btn.textContent = 'Importing...';
-  try {
-    const res = await fetch('/api/import-excel', { method: 'POST' });
-    const result = await res.json();
-    if (result.success) {
-      showToast(`Imported ${result.postmasterEntries} weekly postmaster entries`);
-      appData = await (await fetch('/api/data')).json();
-      renderAll();
-    } else showToast('Import failed: ' + result.error);
-  } catch (err) { showToast('Import error: ' + err.message); }
-  btn.disabled = false; btn.textContent = 'Import Excel';
 }
 
 // --- Helpers ---

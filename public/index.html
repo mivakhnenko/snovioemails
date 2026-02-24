@@ -139,6 +139,12 @@
 
   .data-warning { background: rgba(248,113,113,0.1); border: 1px solid var(--red); border-radius: 8px; padding: 10px 16px; margin-bottom: 16px; font-size: 12px; color: var(--red); font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
 
+  .collapsible-toggle { display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
+  .collapsible-toggle .toggle-arrow { font-size: 10px; color: var(--text-dim); transition: transform 0.2s; }
+  .collapsible-toggle.collapsed .toggle-arrow { transform: rotate(-90deg); }
+  .collapsible-body { transition: max-height 0.25s ease, opacity 0.2s ease; overflow: hidden; }
+  .collapsible-body.collapsed { max-height: 0 !important; opacity: 0; }
+
   @media (max-width: 768px) {
     .chart-row { grid-template-columns: 1fr; }
     .score-grid { grid-template-columns: repeat(2, 1fr); }
@@ -218,11 +224,13 @@
     </div>
 
     <div class="table-wrap">
-      <h3>Recent Flagged Campaigns <i class="info-icon tip-down">?<span class="info-tip">Campaigns from the selected period flagged as <strong>Warning</strong> or <strong>Critical</strong> based on their metrics.<br><br>Thresholds:<br>• <strong>Bounce</strong>: healthy &lt;2%, warning 2–5%, critical &gt;5%<br>• <strong>Unsub</strong>: healthy &lt;0.5%, warning 0.5–1%, critical &gt;1%<br>• <strong>Opens</strong>: healthy &gt;15%, warning 10–15%, critical &lt;10%<br><br>Click column headers to sort. See full list in the Campaigns tab.<span class="tip-src">Source: SendPulse API /campaigns</span></span></i></h3>
-      <table>
-        <thead><tr><th>Date</th><th>Campaign</th><th>Flag</th><th>Open %</th><th>Bounce %</th><th>Unsub %</th><th>Issue</th></tr></thead>
-        <tbody id="flaggedTable"></tbody>
-      </table>
+      <h3 class="collapsible-toggle collapsed" onclick="toggleCollapsible(this)"><span class="toggle-arrow">▼</span> Recent Flagged Campaigns <span id="flaggedCount" style="font-size:11px;color:var(--text-dim);font-weight:400"></span> <i class="info-icon tip-down">?<span class="info-tip">Campaigns from the selected period flagged as <strong>Warning</strong> or <strong>Critical</strong> based on their metrics.<br><br>Thresholds:<br>• <strong>Bounce</strong>: healthy &lt;2%, warning 2–5%, critical &gt;5%<br>• <strong>Unsub</strong>: healthy &lt;0.5%, warning 0.5–1%, critical &gt;1%<br>• <strong>Opens</strong>: healthy &gt;15%, warning 10–15%, critical &lt;10%<br><br>Click column headers to sort. See full list in the Campaigns tab.<span class="tip-src">Source: SendPulse API /campaigns</span></span></i></h3>
+      <div class="collapsible-body collapsed">
+        <table>
+          <thead><tr><th>Date</th><th>Campaign</th><th>Flag</th><th>Open %</th><th>Bounce %</th><th>Unsub %</th><th>Issue</th></tr></thead>
+          <tbody id="flaggedTable"></tbody>
+        </table>
+      </div>
     </div>
 
     <!-- AUTOMATION 360 SECTION -->
@@ -246,11 +254,13 @@
         </div>
       </div>
       <div class="table-wrap">
-        <h3>Flagged A360 Emails <i class="info-icon tip-down">?<span class="info-tip">Individual emails within A360 flows that are flagged based on the same thresholds as campaigns:<br>• <strong>Bounce</strong>: healthy &lt;2%, warning 2–5%, critical &gt;5%<br>• <strong>Unsub</strong>: healthy &lt;0.5%, warning 0.5–1%, critical &gt;1%<br>• <strong>Opens</strong>: healthy &gt;15%, warning 10–15%, critical &lt;10%<span class="tip-src">Source: SendPulse CSV exports</span></span></i></h3>
-        <table>
-          <thead><tr><th>Flow</th><th>Email Subject</th><th>Flag</th><th>Open %</th><th>Click %</th><th>Bounce %</th><th>Unsub %</th></tr></thead>
-          <tbody id="a360FlaggedTable"></tbody>
-        </table>
+        <h3 class="collapsible-toggle collapsed" onclick="toggleCollapsible(this)"><span class="toggle-arrow">▼</span> Flagged A360 Emails <span id="a360FlaggedCount" style="font-size:11px;color:var(--text-dim);font-weight:400"></span> <i class="info-icon tip-down">?<span class="info-tip">Individual emails within A360 flows that are flagged based on the same thresholds as campaigns:<br>• <strong>Bounce</strong>: healthy &lt;2%, warning 2–5%, critical &gt;5%<br>• <strong>Unsub</strong>: healthy &lt;0.5%, warning 0.5–1%, critical &gt;1%<br>• <strong>Opens</strong>: healthy &gt;15%, warning 10–15%, critical &lt;10%<span class="tip-src">Source: SendPulse CSV exports</span></span></i></h3>
+        <div class="collapsible-body collapsed">
+          <table>
+            <thead><tr><th>Flow</th><th>Email Subject</th><th>Flag</th><th>Open %</th><th>Click %</th><th>Bounce %</th><th>Unsub %</th></tr></thead>
+            <tbody id="a360FlaggedTable"></tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -837,6 +847,8 @@ function renderA360Engagement() {
   // Sort: critical first, then warning
   flagged.sort((a, b) => (a.flag === 'critical' ? 0 : 1) - (b.flag === 'critical' ? 0 : 1));
 
+  const a360CountEl = document.getElementById('a360FlaggedCount');
+  if (a360CountEl) a360CountEl.textContent = `(${flagged.length})`;
   document.getElementById('a360FlaggedTable').innerHTML = flagged.length === 0
     ? '<tr><td colspan="7" style="text-align:center;color:var(--text-dim);padding:20px">No flagged A360 emails</td></tr>'
     : flagged.slice(0, 30).map(e => `<tr>
@@ -965,9 +977,17 @@ function flagIssue(c) {
 }
 
 // --- Flagged table ---
+function toggleCollapsible(header) {
+  header.classList.toggle('collapsed');
+  const body = header.nextElementSibling;
+  if (body) body.classList.toggle('collapsed');
+}
+
 function renderFlaggedTable() {
   const campaigns = getCampaignsInPeriod(overviewDays);
   const flagged = campaigns.filter(c => getFlag(c) !== 'healthy').slice(0, 20);
+  const countEl = document.getElementById('flaggedCount');
+  if (countEl) countEl.textContent = `(${flagged.length})`;
   document.getElementById('flaggedTable').innerHTML = flagged.length === 0
     ? '<tr><td colspan="7" style="text-align:center;color:var(--text-dim);padding:20px">No flagged campaigns in this period</td></tr>'
     : flagged.map(c => `<tr>

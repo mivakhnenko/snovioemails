@@ -225,7 +225,7 @@
 
     <!-- AUTOMATION 360 SECTION -->
     <div class="section-divider">
-      <div class="section-divider-title">🤖 Automation 360 <i class="info-icon">?<span class="info-tip">Metrics from SendPulse Automation 360 flows (automated email sequences like onboarding, drip campaigns, lifecycle emails).<br><br><strong>Note:</strong> The SendPulse A360 API only provides flow-level totals (starts, emails sent). Per-email open/click/bounce rates are not available via the API — check individual flow reports in SendPulse for those details.<span class="tip-src">Source: SendPulse API /a360/autoresponders</span></span></i></div>
+      <div class="section-divider-title">🤖 Automation 360 <i class="info-icon">?<span class="info-tip">Metrics from SendPulse Automation 360 flows (automated email sequences like onboarding, drip campaigns, lifecycle emails).<br><br>When CSV imports are available, <strong>Emails Sent, Open Rate, Click Rate</strong> show actual period-specific numbers. <strong>Starts, Completion Rate, In Queue</strong> are always cumulative all-time (API limitation).<span class="tip-src">Source: SendPulse CSV exports + API</span></span></i></div>
       <div class="section-divider-sub" id="a360PeriodLabel">Automated flow performance (active flows only)</div>
     </div>
     <div class="score-grid" id="a360ScoreCards"></div>
@@ -642,64 +642,118 @@ function renderA360ScoreCards() {
   const allActive = auto.filter(a => a.status === 'active');
   const active = getA360ActiveInPeriod(overviewDays);
 
-  const totalStarts = active.reduce((s, a) => s + a.starts, 0);
-  const totalSent = active.reduce((s, a) => s + a.sendMessages, 0);
-  const totalSteps = active.reduce((s, a) => s + a.emailStepCount, 0);
-  const totalEnd = active.reduce((s, a) => s + a.endCount, 0);
-  const totalConversions = active.reduce((s, a) => s + a.conversions, 0);
-  const totalQueue = active.reduce((s, a) => s + a.inQueue, 0);
+  // Check if we have imported CSV stats for this period (actual period-specific data)
+  const snapshots = getA360SnapshotsInPeriod(overviewDays);
+  const csvFlows = getMergedA360Flows(snapshots);
+  const hasCSV = csvFlows.length > 0;
+  const csvActiveFlows = csvFlows.filter(f => f.totalSent > 0);
 
-  const completionRate = totalStarts > 0 ? (totalEnd / totalStarts * 100) : null;
-  const conversionRate = totalStarts > 0 ? (totalConversions / totalStarts * 100) : null;
-  const emailsPerStart = totalStarts > 0 ? (totalSent / totalStarts) : null;
+  // Use CSV data for sent/delivered (actual period data), API for starts/completions/conversions/queue (cumulative only)
+  const csvTotalSent = csvFlows.reduce((s, f) => s + f.totalSent, 0);
+  const csvTotalDelivered = csvFlows.reduce((s, f) => s + f.totalDelivered, 0);
+  const csvTotalOpens = csvFlows.reduce((s, f) => s + f.totalOpens, 0);
+  const csvTotalClicks = csvFlows.reduce((s, f) => s + f.totalClicks, 0);
+  const csvTotalEmails = csvFlows.reduce((s, f) => s + f.emailCount, 0);
+
+  // API cumulative totals (always all-time, no period filtering possible)
+  const apiTotalStarts = allActive.reduce((s, a) => s + a.starts, 0);
+  const apiTotalEnd = allActive.reduce((s, a) => s + a.endCount, 0);
+  const apiTotalConversions = allActive.reduce((s, a) => s + a.conversions, 0);
+  const apiTotalQueue = allActive.reduce((s, a) => s + a.inQueue, 0);
+  const apiTotalSent = allActive.reduce((s, a) => s + a.sendMessages, 0);
+  const apiTotalSteps = allActive.reduce((s, a) => s + a.emailStepCount, 0);
+
+  const completionRate = apiTotalStarts > 0 ? (apiTotalEnd / apiTotalStarts * 100) : null;
+  const conversionRate = apiTotalStarts > 0 ? (apiTotalConversions / apiTotalStarts * 100) : null;
 
   const f1 = v => v != null ? v.toFixed(1) : 'N/A';
   const f1pct = v => v != null ? v.toFixed(1) + '%' : 'N/A';
 
-  // Update period label
+  // Period info
   const pLabel = periodLabel(overviewDays);
   const pRange = periodDateRange(overviewDays);
+  const periodStr = snapshots.length > 0 && snapshots[0].periodStart
+    ? `${snapshots[0].periodStart} \u2192 ${snapshots[0].periodEnd}`
+    : pRange;
+
+  // Update period label
   const a360LabelEl = document.getElementById('a360PeriodLabel');
   if (a360LabelEl) {
-    if (overviewDays === 0) {
-      a360LabelEl.textContent = 'All active flows \u2014 cumulative totals (all time)';
+    if (hasCSV) {
+      a360LabelEl.textContent = overviewDays === 0
+        ? `All imported data \u2014 ${csvActiveFlows.length} flows with sends, ${csvFlows.length - csvActiveFlows.length} dormant`
+        : `Last ${pLabel} (${periodStr}) \u2014 ${csvActiveFlows.length} flows with sends, ${csvFlows.length - csvActiveFlows.length} dormant`;
     } else {
-      a360LabelEl.textContent = `${active.length} of ${allActive.length} active flows with activity in the last ${pLabel} (${pRange}) \u2014 cumulative totals`;
+      a360LabelEl.textContent = overviewDays === 0
+        ? 'All active flows \u2014 cumulative totals (all time, from API)'
+        : `${active.length} of ${allActive.length} active flows \u2014 cumulative totals (from API)`;
     }
   }
 
-  const cumNote = 'All A360 metrics are <strong>cumulative all-time totals</strong>. The SendPulse API does not provide date-bucketed data for automation flows, so period comparisons are not available.';
+  const csvNote = 'These are <strong>actual period-specific numbers</strong> from the imported SendPulse CSV exports.';
+  const cumNote = 'This metric is a <strong>cumulative all-time total</strong> from the API. Period-specific values are not available.';
+  const csvSrc = '<span class="tip-src">Source: SendPulse CSV exports</span>';
+  const apiSrc = '<span class="tip-src">Source: SendPulse API (cumulative)</span>';
 
-  const cards = [
+  const cards = hasCSV ? [
+    // When CSV data is available, show period-accurate metrics
+    { label: 'Active Flows', value: csvActiveFlows.length,
+      sub: `${csvFlows.length} total (${csvFlows.length - csvActiveFlows.length} dormant)`,
+      tip: `Flows with at least 1 email sent in this period. Dormant flows had no triggers but remain active.${csvSrc}` },
+    { label: 'Emails Sent', value: csvTotalSent.toLocaleString(),
+      sub: `${csvTotalDelivered.toLocaleString()} delivered (${csvTotalSent > 0 ? (csvTotalDelivered / csvTotalSent * 100).toFixed(1) : 0}%)`,
+      tip: `Total emails sent across all A360 flows in this period. ${csvNote}${csvSrc}` },
+    { label: 'Open Rate', value: f1pct(csvTotalDelivered > 0 ? csvTotalOpens / csvTotalDelivered * 100 : null),
+      status: avgStatus(csvTotalDelivered > 0 ? csvTotalOpens / csvTotalDelivered * 100 : null, 'openRate', true),
+      sub: `${csvTotalOpens.toLocaleString()} opens`,
+      tip: `<strong>Opens \u00F7 Delivered \u00D7 100%</strong> across all A360 flows in this period. Weighted by volume.<br><br>Healthy: &gt;15% | Warning: 10\u201315% | Critical: &lt;10%<br><br>${csvNote}${csvSrc}` },
+    { label: 'Click Rate', value: f1pct(csvTotalDelivered > 0 ? csvTotalClicks / csvTotalDelivered * 100 : null),
+      sub: `${csvTotalClicks.toLocaleString()} clicks`,
+      tip: `<strong>Clicks \u00F7 Delivered \u00D7 100%</strong> across all A360 flows in this period.<br><br>${csvNote}${csvSrc}` },
+    { label: 'Email Steps', value: csvTotalEmails,
+      sub: `Across ${csvFlows.length} flows`,
+      tip: `Total email steps found across all imported flows.${csvSrc}` },
+    { label: 'Total Starts', value: apiTotalStarts.toLocaleString(),
+      sub: 'Cumulative all-time (API)',
+      tip: `Total people who have entered active flows. ${cumNote}${apiSrc}` },
+    { label: 'Completion Rate', value: f1pct(completionRate),
+      sub: `Cumulative (${apiTotalEnd.toLocaleString()} of ${apiTotalStarts.toLocaleString()})`,
+      tip: `<strong>End Count \u00F7 Starts \u00D7 100%</strong>. ${cumNote}${apiSrc}` },
+    { label: 'In Queue', value: apiTotalQueue.toLocaleString(),
+      sub: 'Currently waiting in flows',
+      tip: `People currently between steps in automation flows.${apiSrc}` },
+  ] : [
+    // Fallback: no CSV data, show API metrics with clear cumulative labels
     { label: 'Active Flows', value: active.length,
       sub: `${auto.length} total flows (${allActive.length} active)`,
-      tip: `Number of active automation flows${overviewDays > 0 ? ' with send activity in the selected period' : ''}. Includes onboarding sequences, drip campaigns, lifecycle emails, etc.<br><br>${cumNote}<span class="tip-src">Source: SendPulse API /a360/autoresponders</span>` },
-    { label: 'Total Starts', value: totalStarts.toLocaleString(),
-      sub: 'People entered flows',
-      tip: `Total people who have entered the active flows shown. One person can start multiple flows.<br><br>${cumNote}<span class="tip-src">Source: SendPulse API /a360/autoresponders</span>` },
-    { label: 'Emails Sent (A360)', value: totalSent.toLocaleString(),
-      sub: 'All active flows combined',
-      tip: `Total emails sent across all active flows shown. Per-email open/click/bounce stats are not available via the A360 API.<br><br>${cumNote}<span class="tip-src">Source: SendPulse API /a360/autoresponders</span>` },
-    { label: 'Email Steps', value: totalSteps,
+      tip: `Number of active automation flows${overviewDays > 0 ? ' with send activity in the selected period' : ''}.<br><br>${cumNote}<span class="tip-src">Source: SendPulse API /a360/autoresponders</span>` },
+    { label: 'Total Starts', value: apiTotalStarts.toLocaleString(),
+      sub: 'Cumulative all-time',
+      tip: `Total people who have entered the active flows. ${cumNote}${apiSrc}` },
+    { label: 'Emails Sent', value: apiTotalSent.toLocaleString(),
+      sub: 'Cumulative all-time',
+      tip: `Total emails sent across all active flows. ${cumNote}${apiSrc}` },
+    { label: 'Email Steps', value: apiTotalSteps,
       sub: 'Across active flows',
-      tip: `Total email steps configured across flows. Click a flow in the Automations tab to see individual steps.<br><br>${cumNote}<span class="tip-src">Source: SendPulse API /a360/autoresponders</span>` },
+      tip: `Total email steps configured across flows.${apiSrc}` },
     { label: 'Completion Rate', value: f1pct(completionRate),
-      sub: `${totalEnd.toLocaleString()} completed of ${totalStarts.toLocaleString()} started`,
-      tip: `<strong>End Count \u00F7 Starts \u00D7 100%</strong>. Percentage of people who reached the end of the automation flow. Lower rates may indicate drop-offs or that flows are still running for many people.<br><br>${cumNote}<span class="tip-src">Source: SendPulse API /a360/autoresponders</span>` },
+      sub: `${apiTotalEnd.toLocaleString()} completed of ${apiTotalStarts.toLocaleString()} started`,
+      tip: `<strong>End Count \u00F7 Starts \u00D7 100%</strong>. ${cumNote}${apiSrc}` },
     { label: 'Conversion Rate', value: f1pct(conversionRate),
-      sub: `${totalConversions.toLocaleString()} conversions`,
-      tip: `<strong>Conversions \u00F7 Starts \u00D7 100%</strong>. Percentage of people who triggered a conversion goal within the flow. Conversion goals are configured per-flow in SendPulse.<br><br>${cumNote}<span class="tip-src">Source: SendPulse API /a360/autoresponders</span>` },
-    { label: 'Emails per Start', value: f1(emailsPerStart),
-      sub: 'Engagement depth',
-      tip: `<strong>Emails Sent \u00F7 Total Starts</strong>. Average number of emails each person receives across the flow. Higher values indicate deeper engagement (people progressing through more steps).<br><br>${cumNote}<span class="tip-src">Source: SendPulse API /a360/autoresponders</span>` },
-    { label: 'In Queue', value: totalQueue.toLocaleString(),
+      sub: `${apiTotalConversions.toLocaleString()} conversions`,
+      tip: `<strong>Conversions \u00F7 Starts \u00D7 100%</strong>. ${cumNote}${apiSrc}` },
+    { label: 'Emails per Start', value: f1(apiTotalStarts > 0 ? apiTotalSent / apiTotalStarts : null),
+      sub: 'Engagement depth (cumulative)',
+      tip: `<strong>Emails Sent \u00F7 Total Starts</strong>. ${cumNote}${apiSrc}` },
+    { label: 'In Queue', value: apiTotalQueue.toLocaleString(),
       sub: 'Currently waiting in flows',
-      tip: `People currently waiting in automation flows (between steps, waiting for time delays, etc.). A very high queue relative to starts may indicate bottlenecks or stuck flows.<br><br>${cumNote}<span class="tip-src">Source: SendPulse API /a360/autoresponders</span>` },
+      tip: `People currently waiting in automation flows.${apiSrc}` },
   ];
 
   document.getElementById('a360ScoreCards').innerHTML = cards.map(m => {
+    let statusHtml = m.status ? `<span class="health-badge ${m.status}" style="margin-left:8px;font-size:10px">${m.status}</span>` : '';
     const tipHtml = m.tip ? tip(m.tip) : '';
-    return `<div class="score-card"><div class="label">${m.label}${tipHtml}</div><div class="value">${m.value}</div><div class="sub">${m.sub}</div></div>`;
+    return `<div class="score-card"><div class="label">${m.label}${tipHtml}</div><div class="value">${m.value}${statusHtml}</div><div class="sub">${m.sub}</div></div>`;
   }).join('');
 
   renderA360Charts(active, auto);

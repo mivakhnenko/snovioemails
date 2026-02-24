@@ -206,32 +206,20 @@
       <button class="period-btn" data-days="0">All time</button>
     </div>
 
-    <!-- CAMPAIGNS SECTION -->
+    <!-- GOOGLE POSTMASTER SECTION -->
     <div class="section-divider" style="margin-top:0; border-top:none; padding-top:0;">
-      <div class="section-divider-title">📊 Campaigns <i class="info-icon">?<span class="info-tip">Metrics from SendPulse email campaigns (one-time blasts). Includes delivery, engagement, and bounce metrics.<br><br>The <strong>"vs prev"</strong> comparison shows the change compared to the previous period of the same length (e.g., last 30 days vs the 30 days before that).<span class="tip-src">Source: SendPulse API /campaigns</span></span></i></div>
-      <div class="section-divider-sub" id="campaignPeriodLabel">Campaign performance for the selected period</div>
+      <div class="section-divider-title">📬 Google Postmaster <i class="info-icon">?<span class="info-tip">Data from Google Postmaster Tools, entered manually each week. Shows how Gmail sees your emails. These metrics directly affect inbox placement for Gmail recipients.<span class="tip-src">Source: Google Postmaster (manual entry)</span></span></i></div>
+      <div class="section-divider-sub">Gmail deliverability signals for the selected period</div>
     </div>
-    <div class="score-grid" id="scoreCards"></div>
-
-    <div class="section-title">Campaign Trends <i class="info-icon">?<span class="info-tip">Weekly averages of campaign performance metrics from SendPulse. Each data point represents the average across all campaigns sent that week.<span class="tip-src">Source: SendPulse API /campaigns</span></span></i></div>
+    <div class="score-grid" id="postmasterScoreCards"></div>
     <div class="chart-row">
       <div class="chart-box">
-        <h3>Open & Click Rates <i class="info-icon">?<span class="info-tip"><strong>Open Rate</strong> = Opens / Delivered. Tracked via a pixel in the email.<br><strong>Click Rate</strong> = Link Clicks / Delivered.<br><br>Each point is the weekly average across all campaigns sent that week. Higher is better.<span class="tip-src">Source: SendPulse API /campaigns</span></span></i></h3>
-        <canvas id="chartPerformance"></canvas>
+        <h3>Spam Rate (weekly) <i class="info-icon">?<span class="info-tip"><strong>User-reported spam rate</strong> from Google Postmaster. This is the % of recipients who clicked "Report Spam" in Gmail.<br><br>Google recommends keeping this <strong>below 0.1%</strong> and never exceeding 0.3%. Sustained high rates can cause Gmail to send your emails to spam.<span class="tip-src">Source: Google Postmaster (manual entry)</span></span></i></h3>
+        <canvas id="chartSpamRate"></canvas>
       </div>
       <div class="chart-box">
-        <h3>Bounce & Unsubscribe Rates <i class="info-icon">?<span class="info-tip"><strong>Bounce Rate</strong> = Bounced / Sent. Includes hard + soft bounces.<br><strong>Unsub Rate</strong> = Unsubscribes / Delivered.<br><br>Each point is the weekly average. Lower is better. Watch for sudden spikes.<span class="tip-src">Source: SendPulse API /campaigns</span></span></i></h3>
-        <canvas id="chartHealth"></canvas>
-      </div>
-    </div>
-
-    <div class="table-wrap">
-      <h3 class="collapsible-toggle collapsed" onclick="toggleCollapsible(event, this)"><span class="toggle-arrow">▼</span> Recent Flagged Campaigns <span id="flaggedCount" style="font-size:11px;color:var(--text-dim);font-weight:400"></span> <i class="info-icon tip-down">?<span class="info-tip">Campaigns from the selected period flagged as <strong>Warning</strong> or <strong>Critical</strong> based on their metrics.<br><br>Thresholds:<br>• <strong>Bounce</strong>: healthy &lt;2%, warning 2–5%, critical &gt;5%<br>• <strong>Unsub</strong>: healthy &lt;0.5%, warning 0.5–1%, critical &gt;1%<br>• <strong>Opens</strong>: healthy &gt;15%, warning 10–15%, critical &lt;10%<br><br>Click column headers to sort. See full list in the Campaigns tab.<span class="tip-src">Source: SendPulse API /campaigns</span></span></i></h3>
-      <div class="collapsible-body collapsed">
-        <table>
-          <thead><tr><th>Date</th><th>Campaign</th><th>Flag</th><th>Open %</th><th>Bounce %</th><th>Unsub %</th><th>Issue</th></tr></thead>
-          <tbody id="flaggedTable"></tbody>
-        </table>
+        <h3>Authentication Rates (weekly) <i class="info-icon">?<span class="info-tip"><strong>SPF</strong>: Sender Policy Framework — verifies the sending server is authorized.<br><strong>DKIM</strong>: DomainKeys Identified Mail — verifies email hasn't been tampered with.<br><strong>DMARC</strong>: Domain-based Message Authentication — policy that ties SPF + DKIM together.<br><br>All three should be as close to 100% as possible.<span class="tip-src">Source: Google Postmaster (manual entry)</span></span></i></h3>
+        <canvas id="chartAuth"></canvas>
       </div>
     </div>
 
@@ -266,20 +254,32 @@
       </div>
     </div>
 
-    <!-- GOOGLE POSTMASTER SECTION -->
+    <!-- CAMPAIGNS SECTION -->
     <div class="section-divider">
-      <div class="section-divider-title">📬 Google Postmaster <i class="info-icon">?<span class="info-tip">Data from Google Postmaster Tools, entered manually each week. Shows how Gmail sees your emails. These metrics directly affect inbox placement for Gmail recipients.<span class="tip-src">Source: Google Postmaster (manual entry)</span></span></i></div>
-      <div class="section-divider-sub">Gmail deliverability signals for the selected period</div>
+      <div class="section-divider-title">📊 Campaigns <i class="info-icon">?<span class="info-tip">Metrics from SendPulse email campaigns (one-time blasts). Includes delivery, engagement, and bounce metrics.<br><br>The <strong>"vs prev"</strong> comparison shows the change compared to the previous period of the same length (e.g., last 30 days vs the 30 days before that).<span class="tip-src">Source: SendPulse API /campaigns</span></span></i></div>
+      <div class="section-divider-sub" id="campaignPeriodLabel">Campaign performance for the selected period</div>
     </div>
-    <div class="score-grid" id="postmasterScoreCards"></div>
+    <div class="score-grid" id="scoreCards"></div>
+
+    <div class="section-title">Campaign Trends <i class="info-icon">?<span class="info-tip">Weekly averages of campaign performance metrics from SendPulse. Each data point represents the average across all campaigns sent that week.<span class="tip-src">Source: SendPulse API /campaigns</span></span></i></div>
     <div class="chart-row">
       <div class="chart-box">
-        <h3>Spam Rate (weekly) <i class="info-icon">?<span class="info-tip"><strong>User-reported spam rate</strong> from Google Postmaster. This is the % of recipients who clicked "Report Spam" in Gmail.<br><br>Google recommends keeping this <strong>below 0.1%</strong> and never exceeding 0.3%. Sustained high rates can cause Gmail to send your emails to spam.<span class="tip-src">Source: Google Postmaster (manual entry)</span></span></i></h3>
-        <canvas id="chartSpamRate"></canvas>
+        <h3>Open & Click Rates <i class="info-icon">?<span class="info-tip"><strong>Open Rate</strong> = Opens / Delivered. Tracked via a pixel in the email.<br><strong>Click Rate</strong> = Link Clicks / Delivered.<br><br>Each point is the weekly average across all campaigns sent that week. Higher is better.<span class="tip-src">Source: SendPulse API /campaigns</span></span></i></h3>
+        <canvas id="chartPerformance"></canvas>
       </div>
       <div class="chart-box">
-        <h3>Authentication Rates (weekly) <i class="info-icon">?<span class="info-tip"><strong>SPF</strong>: Sender Policy Framework — verifies the sending server is authorized.<br><strong>DKIM</strong>: DomainKeys Identified Mail — verifies email hasn't been tampered with.<br><strong>DMARC</strong>: Domain-based Message Authentication — policy that ties SPF + DKIM together.<br><br>All three should be as close to 100% as possible.<span class="tip-src">Source: Google Postmaster (manual entry)</span></span></i></h3>
-        <canvas id="chartAuth"></canvas>
+        <h3>Bounce & Unsubscribe Rates <i class="info-icon">?<span class="info-tip"><strong>Bounce Rate</strong> = Bounced / Sent. Includes hard + soft bounces.<br><strong>Unsub Rate</strong> = Unsubscribes / Delivered.<br><br>Each point is the weekly average. Lower is better. Watch for sudden spikes.<span class="tip-src">Source: SendPulse API /campaigns</span></span></i></h3>
+        <canvas id="chartHealth"></canvas>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <h3 class="collapsible-toggle collapsed" onclick="toggleCollapsible(event, this)"><span class="toggle-arrow">▼</span> Recent Flagged Campaigns <span id="flaggedCount" style="font-size:11px;color:var(--text-dim);font-weight:400"></span> <i class="info-icon tip-down">?<span class="info-tip">Campaigns from the selected period flagged as <strong>Warning</strong> or <strong>Critical</strong> based on their metrics.<br><br>Thresholds:<br>• <strong>Bounce</strong>: healthy &lt;2%, warning 2–5%, critical &gt;5%<br>• <strong>Unsub</strong>: healthy &lt;0.5%, warning 0.5–1%, critical &gt;1%<br>• <strong>Opens</strong>: healthy &gt;15%, warning 10–15%, critical &lt;10%<br><br>Click column headers to sort. See full list in the Campaigns tab.<span class="tip-src">Source: SendPulse API /campaigns</span></span></i></h3>
+      <div class="collapsible-body collapsed">
+        <table>
+          <thead><tr><th>Date</th><th>Campaign</th><th>Flag</th><th>Open %</th><th>Bounce %</th><th>Unsub %</th><th>Issue</th></tr></thead>
+          <tbody id="flaggedTable"></tbody>
+        </table>
       </div>
     </div>
   </div>

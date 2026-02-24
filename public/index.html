@@ -137,6 +137,8 @@
   .section-divider-title { font-size: 16px; font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
   .section-divider-sub { font-size: 11px; color: var(--text-dim); margin-bottom: 16px; }
 
+  .data-warning { background: rgba(248,113,113,0.1); border: 1px solid var(--red); border-radius: 8px; padding: 10px 16px; margin-bottom: 16px; font-size: 12px; color: var(--red); font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
+
   @media (max-width: 768px) {
     .chart-row { grid-template-columns: 1fr; }
     .score-grid { grid-template-columns: repeat(2, 1fr); }
@@ -231,6 +233,7 @@
           <span id="a360ImportDate" style="font-size:10px;color:var(--text-dim);font-weight:400;margin-left:8px"></span>
         </div>
       </div>
+      <div class="data-warning" id="a360DataWarning" style="display:none"></div>
       <div class="score-grid" id="a360EngagementCards"></div>
       <div class="chart-row">
         <div class="chart-box">
@@ -688,6 +691,26 @@ function renderA360Engagement() {
     return;
   }
   section.style.display = '';
+
+  // Show data coverage warning for periods that extend before first import
+  const DATA_START = '2026-01-25';
+  const warningEl = document.getElementById('a360DataWarning');
+  if (warningEl) {
+    if (overviewDays > 30) {
+      const periodStart = new Date();
+      periodStart.setDate(periodStart.getDate() - overviewDays);
+      const periodStartStr = periodStart.toISOString().substring(0, 10);
+      if (periodStartStr < DATA_START) {
+        const actualDays = Math.floor((Date.now() - new Date(DATA_START).getTime()) / 86400000);
+        warningEl.textContent = `\u26A0 Data collection started on Jan 25, 2026 (${actualDays} days ago) \u2014 this period is not fully covered yet`;
+        warningEl.style.display = '';
+      } else {
+        warningEl.style.display = 'none';
+      }
+    } else {
+      warningEl.style.display = 'none';
+    }
+  }
 
   // Update period label
   const pLabelA360 = periodLabel(overviewDays);

@@ -243,6 +243,20 @@ app.post('/api/sync-automations', async (req, res) => {
   }
 });
 
+// Bulk import data (used to push local data to Render after redeploy)
+app.post('/api/bulk-import', (req, res) => {
+  try {
+    const { campaigns, automations, lastSyncDate, lastA360SyncDate } = req.body;
+    const data = loadData();
+    if (Array.isArray(campaigns)) { data.campaigns = campaigns; data.lastSyncDate = lastSyncDate || new Date().toISOString(); }
+    if (Array.isArray(automations)) { data.automations = automations; data.lastA360SyncDate = lastA360SyncDate || new Date().toISOString(); }
+    saveData(data);
+    res.json({ success: true, campaigns: (data.campaigns||[]).length, automations: (data.automations||[]).length });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Get all data
 app.get('/api/data', (req, res) => {
   res.json(loadData());

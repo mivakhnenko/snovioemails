@@ -610,19 +610,18 @@ function avgStatus(val, metric, reverse) {
 
 // --- Postmaster Score Cards ---
 function renderPostmasterScoreCards() {
-  const pm = getPmInPeriod(overviewDays);
-  const prevCutoff = overviewDays === 0 ? 0 : overviewDays * 2;
-  const pmAll = getPmInPeriod(prevCutoff);
+  // Always compare last 30 days vs the 30 days before that (postmaster data is weekly, 30d is the natural window)
+  const pm = getPmInPeriod(30);
+  const pmAll = getPmInPeriod(60);
   const pmPrev = pmAll.filter(p => !pm.includes(p));
 
   const avg = (arr, key) => arr.length > 0 ? arr.reduce((s, c) => s + (c[key] || 0), 0) / arr.length : null;
   const f1 = v => v != null ? v.toFixed(1) + '%' : 'N/A';
 
-  const pLabel = periodLabel(overviewDays);
-  const pRange = periodDateRange(overviewDays);
-  const prevRange = prevPeriodDateRange(overviewDays);
-  const vsLabel = overviewDays === 0 ? '' : `vs prev ${pLabel}`;
-  const vsExplain = overviewDays === 0 ? '' : `<br><br><strong>% change</strong> compares this period (${pRange}) to the previous ${pLabel} (${prevRange}).`;
+  const pRange = periodDateRange(30);
+  const prevRange = prevPeriodDateRange(30);
+  const vsLabel = 'vs prev 30 days';
+  const vsExplain = `<br><br><strong>% change</strong> compares the last 30 days (${pRange}) to the 30 days before that (${prevRange}).`;
 
   const cards = [
     { label: 'Avg Spam Rate', value: pm.length > 0 ? f1(avg(pm, 'spamRate')) : 'N/A', current: avg(pm, 'spamRate'), prev: avg(pmPrev, 'spamRate'), sub: pm.length + ' weeks of data',
@@ -638,7 +637,7 @@ function renderPostmasterScoreCards() {
 
   document.getElementById('postmasterScoreCards').innerHTML = cards.map(m => {
     let changeHtml = '';
-    if (m.current != null && m.prev != null && m.prev > 0 && overviewDays > 0) {
+    if (m.current != null && m.prev != null && m.prev > 0) {
       const diff = m.current - m.prev;
       const pct = ((diff / m.prev) * 100).toFixed(1);
       const isGood = m.reverse ? diff > 0 : diff < 0;

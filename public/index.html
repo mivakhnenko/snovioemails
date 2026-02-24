@@ -224,38 +224,12 @@
     </div>
 
     <!-- AUTOMATION 360 SECTION -->
-    <div class="section-divider">
-      <div class="section-divider-title">🤖 Automation 360 <i class="info-icon">?<span class="info-tip">Metrics from SendPulse Automation 360 flows (automated email sequences like onboarding, drip campaigns, lifecycle emails).<br><br>When CSV imports are available, <strong>Emails Sent, Open Rate, Click Rate</strong> show actual period-specific numbers. <strong>Starts, Completion Rate, In Queue</strong> are always cumulative all-time (API limitation).<span class="tip-src">Source: SendPulse CSV exports + API</span></span></i></div>
-      <div class="section-divider-sub" id="a360PeriodLabel">Automated flow performance (active flows only)</div>
-    </div>
-    <div class="score-grid" id="a360ScoreCards"></div>
-
-    <div class="chart-row">
-      <div class="chart-box">
-        <h3>Top Flows by Email Volume <i class="info-icon">?<span class="info-tip">Top 10 active automation flows ranked by total emails sent. These are <strong>cumulative totals</strong> since each flow was created, not period-specific.<span class="tip-src">Source: SendPulse API /a360/autoresponders</span></span></i></h3>
-        <canvas id="chartA360TopFlows"></canvas>
-      </div>
-      <div class="chart-box">
-        <h3>Flow Status Distribution <i class="info-icon">?<span class="info-tip">Breakdown of all A360 flows by status. <strong>Active</strong> flows are currently running; <strong>Stopped</strong> were paused or ended; <strong>Draft</strong> haven't been activated yet.<span class="tip-src">Source: SendPulse API /a360/autoresponders</span></span></i></h3>
-        <canvas id="chartA360Status"></canvas>
-      </div>
-    </div>
-
-    <div class="table-wrap">
-      <h3>Top Active Flows <i class="info-icon tip-down">?<span class="info-tip">Active automation flows ranked by email volume. All metrics are <strong>cumulative all-time totals</strong>.<br><br><strong>Completion Rate</strong> = people who reached the end / people who started<br><strong>Conversion Rate</strong> = conversions tracked / people who started<br><strong>Emails/Start</strong> = total emails sent / total starts (engagement depth)<br><br>Click column headers to sort.<span class="tip-src">Source: SendPulse API /a360/autoresponders</span></span></i></h3>
-      <table>
-        <thead><tr>
-          <th>Flow Name</th><th>Starts</th><th>Emails Sent</th>
-          <th>Completion %</th><th>Conversion %</th><th>Emails/Start</th>
-        </tr></thead>
-        <tbody id="a360TopTable"></tbody>
-      </table>
-    </div>
-
-    <!-- A360 ENGAGEMENT (from imported CSV stats) -->
     <div id="a360EngagementSection" style="display:none">
-      <div class="section-title">A360 Email Engagement <i class="info-icon">?<span class="info-tip">Per-email engagement metrics imported from SendPulse CSV exports. Updated monthly (~30-day snapshots).<br><br>Each import covers a 30-day window. As snapshots accumulate, longer period views (90d, 6m, 1y, all time) will aggregate across multiple imports. Flows with zero sends in a period are excluded from charts and flagging.<span class="tip-src">Source: SendPulse CSV exports (manual import)</span></span></i>
-        <span id="a360ImportDate" style="font-size:10px;color:var(--text-dim);font-weight:400;text-transform:none;letter-spacing:0;margin-left:8px"></span>
+      <div class="section-divider">
+        <div class="section-divider-title">🤖 Automation 360 <i class="info-icon">?<span class="info-tip">Per-email engagement metrics from SendPulse A360 flows, imported from CSV exports. Updated monthly (~30-day snapshots).<br><br>Each import covers a 30-day window. As snapshots accumulate, longer period views (90d, 6m, 1y, all time) will aggregate across multiple imports. Flows with zero sends in a period are excluded from charts and flagging.<span class="tip-src">Source: SendPulse CSV exports (manual import)</span></span></i></div>
+        <div class="section-divider-sub" id="a360PeriodLabel">Automated flow performance
+          <span id="a360ImportDate" style="font-size:10px;color:var(--text-dim);font-weight:400;margin-left:8px"></span>
+        </div>
       </div>
       <div class="score-grid" id="a360EngagementCards"></div>
       <div class="chart-row">
@@ -282,6 +256,7 @@
       <div class="section-divider-title">📬 Google Postmaster <i class="info-icon">?<span class="info-tip">Data from Google Postmaster Tools, entered manually each week. Shows how Gmail sees your emails. These metrics directly affect inbox placement for Gmail recipients.<span class="tip-src">Source: Google Postmaster (manual entry)</span></span></i></div>
       <div class="section-divider-sub">Gmail deliverability signals for the selected period</div>
     </div>
+    <div class="score-grid" id="postmasterScoreCards"></div>
     <div class="chart-row">
       <div class="chart-box">
         <h3>Spam Rate (weekly) <i class="info-icon">?<span class="info-tip"><strong>User-reported spam rate</strong> from Google Postmaster. This is the % of recipients who clicked "Report Spam" in Gmail.<br><br>Google recommends keeping this <strong>below 0.1%</strong> and never exceeding 0.3%. Sustained high rates can cause Gmail to send your emails to spam.<span class="tip-src">Source: Google Postmaster (manual entry)</span></span></i></h3>
@@ -479,8 +454,8 @@ function updateSyncInfo() {
 function renderAll() {
   renderScoreCards();
   renderOverviewCharts();
-  renderA360ScoreCards();
   renderA360Engagement();
+  renderPostmasterScoreCards();
   renderFlaggedTable();
   renderCampaignTable();
   renderAutoTable();
@@ -505,8 +480,8 @@ document.getElementById('overviewPeriod').addEventListener('click', e => {
   overviewDays = parseInt(e.target.dataset.days);
   renderScoreCards();
   renderOverviewCharts();
-  renderA360ScoreCards();
   renderA360Engagement();
+  renderPostmasterScoreCards();
   renderFlaggedTable();
 });
 
@@ -565,10 +540,6 @@ function renderScoreCards() {
   const allPrev = getCampaignsInPeriod(prevCutoff);
   const prev = allPrev.filter(c => !current.includes(c));
 
-  const pm = getPmInPeriod(overviewDays);
-  const pmAll = getPmInPeriod(prevCutoff);
-  const pmPrev = pmAll.filter(p => !pm.includes(p));
-
   const avg = (arr, key) => arr.length > 0 ? arr.reduce((s, c) => s + (c[key] || 0), 0) / arr.length : null;
   const sum = (arr, key) => arr.reduce((s, c) => s + (c[key] || 0), 0);
 
@@ -604,8 +575,6 @@ function renderScoreCards() {
       tip: '<strong>Bounced \u00F7 Sent \u00D7 100%</strong>. Average across all campaigns. Includes hard bounces (invalid address) and soft bounces (full inbox, server issues).<br><br>Healthy: &lt;2% | Warning: 2\u20135% | Critical: &gt;5%' + vsExplain + '<span class="tip-src">Source: SendPulse API /campaigns</span>' },
     { label: 'Avg Unsub Rate', value: f1(avg(current, 'unsubRate')), current: avg(current, 'unsubRate'), prev: avg(prev, 'unsubRate'),
       tip: '<strong>Unsubscribes \u00F7 Delivered \u00D7 100%</strong>. Average across all campaigns. High unsub rate may signal irrelevant content or too-frequent sends.<br><br>Healthy: &lt;0.5% | Warning: 0.5\u20131% | Critical: &gt;1%' + vsExplain + '<span class="tip-src">Source: SendPulse API /campaigns</span>' },
-    { label: 'Postmaster Spam', value: pm.length > 0 ? f1(avg(pm, 'spamRate')) : 'N/A', current: avg(pm, 'spamRate'), prev: avg(pmPrev, 'spamRate'), sub: pm.length + ' weeks of data',
-      tip: 'Average <strong>user-reported spam rate</strong> from Google Postmaster Tools for the selected period. This is the % of recipients who clicked "Report Spam" in Gmail.<br><br>Keep below 0.3% to avoid deliverability issues.' + vsExplain + '<span class="tip-src">Source: Google Postmaster (manual entry)</span>' },
     { label: 'Flagged Campaigns', value: current.filter(c => getFlag(c) !== 'healthy').length, sub: `of ${current.length} total`,
       tip: 'Campaigns flagged based on thresholds:<br>\u2022 <strong>Warning</strong>: bounce &gt;2%, unsub &gt;0.5%, or opens &lt;10%<br>\u2022 <strong>Critical</strong>: bounce &gt;5% or unsub &gt;1%<br><br>Click the Campaigns tab to see details and sort by any metric.' },
   ];
@@ -636,215 +605,48 @@ function avgStatus(val, metric, reverse) {
   return val <= t.healthy ? 'healthy' : val <= t.warning ? 'warning' : 'critical';
 }
 
-// --- A360 Score Cards ---
-function renderA360ScoreCards() {
-  const auto = appData.automations || [];
-  const allActive = auto.filter(a => a.status === 'active');
-  const active = getA360ActiveInPeriod(overviewDays);
+// --- Postmaster Score Cards ---
+function renderPostmasterScoreCards() {
+  const pm = getPmInPeriod(overviewDays);
+  const prevCutoff = overviewDays === 0 ? 0 : overviewDays * 2;
+  const pmAll = getPmInPeriod(prevCutoff);
+  const pmPrev = pmAll.filter(p => !pm.includes(p));
 
-  // Check if we have imported CSV stats for this period (actual period-specific data)
-  const snapshots = getA360SnapshotsInPeriod(overviewDays);
-  const csvFlows = getMergedA360Flows(snapshots);
-  const hasCSV = csvFlows.length > 0;
-  const csvActiveFlows = csvFlows.filter(f => f.totalSent > 0);
+  const avg = (arr, key) => arr.length > 0 ? arr.reduce((s, c) => s + (c[key] || 0), 0) / arr.length : null;
+  const f1 = v => v != null ? v.toFixed(1) + '%' : 'N/A';
 
-  // Use CSV data for sent/delivered (actual period data), API for starts/completions/conversions/queue (cumulative only)
-  const csvTotalSent = csvFlows.reduce((s, f) => s + f.totalSent, 0);
-  const csvTotalDelivered = csvFlows.reduce((s, f) => s + f.totalDelivered, 0);
-  const csvTotalOpens = csvFlows.reduce((s, f) => s + f.totalOpens, 0);
-  const csvTotalClicks = csvFlows.reduce((s, f) => s + f.totalClicks, 0);
-  const csvTotalEmails = csvFlows.reduce((s, f) => s + f.emailCount, 0);
-
-  // API cumulative totals (always all-time, no period filtering possible)
-  const apiTotalStarts = allActive.reduce((s, a) => s + a.starts, 0);
-  const apiTotalEnd = allActive.reduce((s, a) => s + a.endCount, 0);
-  const apiTotalConversions = allActive.reduce((s, a) => s + a.conversions, 0);
-  const apiTotalQueue = allActive.reduce((s, a) => s + a.inQueue, 0);
-  const apiTotalSent = allActive.reduce((s, a) => s + a.sendMessages, 0);
-  const apiTotalSteps = allActive.reduce((s, a) => s + a.emailStepCount, 0);
-
-  const completionRate = apiTotalStarts > 0 ? (apiTotalEnd / apiTotalStarts * 100) : null;
-  const conversionRate = apiTotalStarts > 0 ? (apiTotalConversions / apiTotalStarts * 100) : null;
-
-  const f1 = v => v != null ? v.toFixed(1) : 'N/A';
-  const f1pct = v => v != null ? v.toFixed(1) + '%' : 'N/A';
-
-  // Period info
   const pLabel = periodLabel(overviewDays);
   const pRange = periodDateRange(overviewDays);
-  const periodStr = snapshots.length > 0 && snapshots[0].periodStart
-    ? `${snapshots[0].periodStart} \u2192 ${snapshots[0].periodEnd}`
-    : pRange;
+  const prevRange = prevPeriodDateRange(overviewDays);
+  const vsLabel = overviewDays === 0 ? '' : `vs prev ${pLabel}`;
+  const vsExplain = overviewDays === 0 ? '' : `<br><br><strong>% change</strong> compares this period (${pRange}) to the previous ${pLabel} (${prevRange}).`;
 
-  // Update period label
-  const a360LabelEl = document.getElementById('a360PeriodLabel');
-  if (a360LabelEl) {
-    if (hasCSV) {
-      a360LabelEl.textContent = overviewDays === 0
-        ? `All imported data \u2014 ${csvActiveFlows.length} flows with sends, ${csvFlows.length - csvActiveFlows.length} dormant`
-        : `Last ${pLabel} (${periodStr}) \u2014 ${csvActiveFlows.length} flows with sends, ${csvFlows.length - csvActiveFlows.length} dormant`;
-    } else {
-      a360LabelEl.textContent = overviewDays === 0
-        ? 'All active flows \u2014 cumulative totals (all time, from API)'
-        : `${active.length} of ${allActive.length} active flows \u2014 cumulative totals (from API)`;
-    }
-  }
-
-  const csvNote = 'These are <strong>actual period-specific numbers</strong> from the imported SendPulse CSV exports.';
-  const cumNote = 'This metric is a <strong>cumulative all-time total</strong> from the API. Period-specific values are not available.';
-  const csvSrc = '<span class="tip-src">Source: SendPulse CSV exports</span>';
-  const apiSrc = '<span class="tip-src">Source: SendPulse API (cumulative)</span>';
-
-  const cards = hasCSV ? [
-    // When CSV data is available, show period-accurate metrics
-    { label: 'Active Flows', value: csvActiveFlows.length,
-      sub: `${csvFlows.length} total (${csvFlows.length - csvActiveFlows.length} dormant)`,
-      tip: `Flows with at least 1 email sent in this period. Dormant flows had no triggers but remain active.${csvSrc}` },
-    { label: 'Emails Sent', value: csvTotalSent.toLocaleString(),
-      sub: `${csvTotalDelivered.toLocaleString()} delivered (${csvTotalSent > 0 ? (csvTotalDelivered / csvTotalSent * 100).toFixed(1) : 0}%)`,
-      tip: `Total emails sent across all A360 flows in this period. ${csvNote}${csvSrc}` },
-    { label: 'Open Rate', value: f1pct(csvTotalDelivered > 0 ? csvTotalOpens / csvTotalDelivered * 100 : null),
-      status: avgStatus(csvTotalDelivered > 0 ? csvTotalOpens / csvTotalDelivered * 100 : null, 'openRate', true),
-      sub: `${csvTotalOpens.toLocaleString()} opens`,
-      tip: `<strong>Opens \u00F7 Delivered \u00D7 100%</strong> across all A360 flows in this period. Weighted by volume.<br><br>Healthy: &gt;15% | Warning: 10\u201315% | Critical: &lt;10%<br><br>${csvNote}${csvSrc}` },
-    { label: 'Click Rate', value: f1pct(csvTotalDelivered > 0 ? csvTotalClicks / csvTotalDelivered * 100 : null),
-      sub: `${csvTotalClicks.toLocaleString()} clicks`,
-      tip: `<strong>Clicks \u00F7 Delivered \u00D7 100%</strong> across all A360 flows in this period.<br><br>${csvNote}${csvSrc}` },
-    { label: 'Email Steps', value: csvTotalEmails,
-      sub: `Across ${csvFlows.length} flows`,
-      tip: `Total email steps found across all imported flows.${csvSrc}` },
-    { label: 'Total Starts', value: apiTotalStarts.toLocaleString(),
-      sub: 'Cumulative all-time (API)',
-      tip: `Total people who have entered active flows. ${cumNote}${apiSrc}` },
-    { label: 'Completion Rate', value: f1pct(completionRate),
-      sub: `Cumulative (${apiTotalEnd.toLocaleString()} of ${apiTotalStarts.toLocaleString()})`,
-      tip: `<strong>End Count \u00F7 Starts \u00D7 100%</strong>. ${cumNote}${apiSrc}` },
-    { label: 'In Queue', value: apiTotalQueue.toLocaleString(),
-      sub: 'Currently waiting in flows',
-      tip: `People currently between steps in automation flows.${apiSrc}` },
-  ] : [
-    // Fallback: no CSV data, show API metrics with clear cumulative labels
-    { label: 'Active Flows', value: active.length,
-      sub: `${auto.length} total flows (${allActive.length} active)`,
-      tip: `Number of active automation flows${overviewDays > 0 ? ' with send activity in the selected period' : ''}.<br><br>${cumNote}<span class="tip-src">Source: SendPulse API /a360/autoresponders</span>` },
-    { label: 'Total Starts', value: apiTotalStarts.toLocaleString(),
-      sub: 'Cumulative all-time',
-      tip: `Total people who have entered the active flows. ${cumNote}${apiSrc}` },
-    { label: 'Emails Sent', value: apiTotalSent.toLocaleString(),
-      sub: 'Cumulative all-time',
-      tip: `Total emails sent across all active flows. ${cumNote}${apiSrc}` },
-    { label: 'Email Steps', value: apiTotalSteps,
-      sub: 'Across active flows',
-      tip: `Total email steps configured across flows.${apiSrc}` },
-    { label: 'Completion Rate', value: f1pct(completionRate),
-      sub: `${apiTotalEnd.toLocaleString()} completed of ${apiTotalStarts.toLocaleString()} started`,
-      tip: `<strong>End Count \u00F7 Starts \u00D7 100%</strong>. ${cumNote}${apiSrc}` },
-    { label: 'Conversion Rate', value: f1pct(conversionRate),
-      sub: `${apiTotalConversions.toLocaleString()} conversions`,
-      tip: `<strong>Conversions \u00F7 Starts \u00D7 100%</strong>. ${cumNote}${apiSrc}` },
-    { label: 'Emails per Start', value: f1(apiTotalStarts > 0 ? apiTotalSent / apiTotalStarts : null),
-      sub: 'Engagement depth (cumulative)',
-      tip: `<strong>Emails Sent \u00F7 Total Starts</strong>. ${cumNote}${apiSrc}` },
-    { label: 'In Queue', value: apiTotalQueue.toLocaleString(),
-      sub: 'Currently waiting in flows',
-      tip: `People currently waiting in automation flows.${apiSrc}` },
+  const cards = [
+    { label: 'Avg Spam Rate', value: pm.length > 0 ? f1(avg(pm, 'spamRate')) : 'N/A', current: avg(pm, 'spamRate'), prev: avg(pmPrev, 'spamRate'), sub: pm.length + ' weeks of data',
+      status: pm.length > 0 ? (avg(pm, 'spamRate') <= 0.1 ? 'healthy' : avg(pm, 'spamRate') <= 0.3 ? 'warning' : 'critical') : null,
+      tip: 'Average <strong>user-reported spam rate</strong> from Google Postmaster Tools for the selected period. This is the % of recipients who clicked "Report Spam" in Gmail.<br><br>Google recommends: <strong>&lt;0.1%</strong> healthy, <strong>0.1\u20130.3%</strong> warning, <strong>&gt;0.3%</strong> critical.' + vsExplain + '<span class="tip-src">Source: Google Postmaster (manual entry)</span>' },
+    { label: 'Avg SPF Pass', value: pm.length > 0 ? f1(avg(pm, 'spfPass')) : 'N/A', current: avg(pm, 'spfPass'), prev: avg(pmPrev, 'spfPass'), reverse: true, sub: 'SPF authentication rate',
+      tip: '<strong>Sender Policy Framework</strong> pass rate. Verifies the sending server is authorized. Aim for 100%.' + vsExplain + '<span class="tip-src">Source: Google Postmaster (manual entry)</span>' },
+    { label: 'Avg DKIM Pass', value: pm.length > 0 ? f1(avg(pm, 'dkimPass')) : 'N/A', current: avg(pm, 'dkimPass'), prev: avg(pmPrev, 'dkimPass'), reverse: true, sub: 'DKIM authentication rate',
+      tip: '<strong>DomainKeys Identified Mail</strong> pass rate. Verifies email hasn\'t been tampered with. Aim for 100%.' + vsExplain + '<span class="tip-src">Source: Google Postmaster (manual entry)</span>' },
+    { label: 'Avg DMARC Pass', value: pm.length > 0 ? f1(avg(pm, 'dmarcPass')) : 'N/A', current: avg(pm, 'dmarcPass'), prev: avg(pmPrev, 'dmarcPass'), reverse: true, sub: 'DMARC authentication rate',
+      tip: '<strong>Domain-based Message Authentication</strong> pass rate. Ties SPF + DKIM together. Aim for 100%.' + vsExplain + '<span class="tip-src">Source: Google Postmaster (manual entry)</span>' },
   ];
 
-  document.getElementById('a360ScoreCards').innerHTML = cards.map(m => {
+  document.getElementById('postmasterScoreCards').innerHTML = cards.map(m => {
+    let changeHtml = '';
+    if (m.current != null && m.prev != null && m.prev > 0 && overviewDays > 0) {
+      const diff = m.current - m.prev;
+      const pct = ((diff / m.prev) * 100).toFixed(1);
+      const isGood = m.reverse ? diff > 0 : diff < 0;
+      const cls = Math.abs(parseFloat(pct)) < 1 ? 'neutral' : isGood ? 'up' : 'down';
+      const arrow = diff > 0 ? '\u2191' : diff < 0 ? '\u2193' : '\u2192';
+      changeHtml = `<div class="change ${cls}" title="Compared to ${prevRange}">${arrow} ${Math.abs(pct)}% ${vsLabel}</div>`;
+    }
     let statusHtml = m.status ? `<span class="health-badge ${m.status}" style="margin-left:8px;font-size:10px">${m.status}</span>` : '';
     const tipHtml = m.tip ? tip(m.tip) : '';
-    return `<div class="score-card"><div class="label">${m.label}${tipHtml}</div><div class="value">${m.value}${statusHtml}</div><div class="sub">${m.sub}</div></div>`;
+    return `<div class="score-card"><div class="label">${m.label}${tipHtml}</div><div class="value">${m.value}${statusHtml}</div><div class="sub">${m.sub}</div>${changeHtml}</div>`;
   }).join('');
-
-  renderA360Charts(active, auto);
-  renderA360TopTable(active);
-}
-
-// --- A360 Charts ---
-function renderA360Charts(active, allAutos) {
-  // Chart 1: Top flows by email volume (horizontal bar)
-  const top10 = [...active]
-    .sort((a, b) => b.sendMessages - a.sendMessages)
-    .slice(0, 10);
-
-  if (charts.a360TopFlows) charts.a360TopFlows.destroy();
-  if (top10.length > 0) {
-    const truncName = (name) => name.length > 35 ? name.substring(0, 32) + '...' : name;
-    charts.a360TopFlows = new Chart(document.getElementById('chartA360TopFlows'), {
-      type: 'bar',
-      data: {
-        labels: top10.map(a => truncName(a.name)),
-        datasets: [{
-          label: 'Emails Sent',
-          data: top10.map(a => a.sendMessages),
-          backgroundColor: 'rgba(91,108,247,0.6)',
-          borderColor: '#5b6cf7',
-          borderWidth: 1
-        }]
-      },
-      options: {
-        indexAxis: 'y',
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { ticks: { color: '#8b8fa3', font: { size: 9 } }, grid: { color: '#2d3248' } },
-          y: { ticks: { color: '#8b8fa3', font: { size: 9 } }, grid: { display: false } }
-        }
-      }
-    });
-  }
-
-  // Chart 2: Status distribution (doughnut)
-  const statusCounts = {
-    active: allAutos.filter(a => a.status === 'active').length,
-    stopped: allAutos.filter(a => a.status === 'stopped').length,
-    draft: allAutos.filter(a => a.status === 'draft').length,
-  };
-
-  if (charts.a360Status) charts.a360Status.destroy();
-  if (allAutos.length > 0) {
-    charts.a360Status = new Chart(document.getElementById('chartA360Status'), {
-      type: 'doughnut',
-      data: {
-        labels: ['Active', 'Stopped', 'Draft'],
-        datasets: [{
-          data: [statusCounts.active, statusCounts.stopped, statusCounts.draft],
-          backgroundColor: ['rgba(52,211,153,0.7)', 'rgba(248,113,113,0.7)', 'rgba(139,143,163,0.4)'],
-          borderColor: ['#34d399', '#f87171', '#8b8fa3'],
-          borderWidth: 1
-        }]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { labels: { color: '#8b8fa3', font: { size: 10 } } } }
-      }
-    });
-  }
-}
-
-// --- A360 Top Flows Table ---
-function renderA360TopTable(active) {
-  const sorted = [...active]
-    .sort((a, b) => b.sendMessages - a.sendMessages)
-    .slice(0, 15);
-
-  const tbody = document.getElementById('a360TopTable');
-  if (!tbody) return;
-
-  tbody.innerHTML = sorted.length === 0
-    ? '<tr><td colspan="6" style="text-align:center;color:var(--text-dim);padding:20px">No active flows in this period</td></tr>'
-    : sorted.map(a => {
-        const compRate = a.starts > 0 ? (a.endCount / a.starts * 100).toFixed(1) : '-';
-        const convRate = a.starts > 0 ? (a.conversions / a.starts * 100).toFixed(1) : '-';
-        const ePerS = a.starts > 0 ? (a.sendMessages / a.starts).toFixed(1) : '-';
-        return `<tr>
-          <td><strong>${esc(a.name.length > 50 ? a.name.substring(0, 47) + '...' : a.name)}</strong></td>
-          <td>${a.starts.toLocaleString()}</td><td>${a.sendMessages.toLocaleString()}</td>
-          <td>${compRate}${compRate !== '-' ? '%' : ''}</td>
-          <td>${convRate}${convRate !== '-' ? '%' : ''}</td>
-          <td>${ePerS}</td>
-        </tr>`;
-      }).join('');
 }
 
 // --- A360 Engagement (from imported CSV stats) ---
@@ -887,7 +689,17 @@ function renderA360Engagement() {
   }
   section.style.display = '';
 
+  // Update period label
+  const pLabelA360 = periodLabel(overviewDays);
+  const a360LabelEl = document.getElementById('a360PeriodLabel');
   const importDateEl = document.getElementById('a360ImportDate');
+  const activeFlowsAll = flows.filter(f => f.totalSent > 0);
+
+  if (a360LabelEl) {
+    a360LabelEl.childNodes[0].textContent = overviewDays === 0
+      ? `All imported data \u2014 ${activeFlowsAll.length} flows with sends, ${flows.length - activeFlowsAll.length} dormant `
+      : `Last ${pLabelA360} \u2014 ${activeFlowsAll.length} flows with sends, ${flows.length - activeFlowsAll.length} dormant `;
+  }
   if (importDateEl && snapshots.length > 0) {
     const latestImport = snapshots.reduce((latest, s) => s.importDate > latest ? s.importDate : latest, '');
     const periodInfo = snapshots.length === 1 && snapshots[0].periodStart
@@ -925,22 +737,22 @@ function renderA360Engagement() {
 
   const f1 = v => v.toFixed(1) + '%';
   const cards = [
-    { label: 'Avg Open Rate (A360)', value: f1(overallOpen), status: avgStatus(overallOpen, 'openRate', true),
+    { label: 'Avg Open Rate', value: f1(overallOpen), status: avgStatus(overallOpen, 'openRate', true),
       sub: `${totalOpens.toLocaleString()} opens / ${totalDelivered.toLocaleString()} delivered`,
       tip: `<strong>Total Opens \u00F7 Total Delivered \u00D7 100%</strong> across all imported A360 flows. Weighted by volume (not avg of avgs).<br><br>Healthy: &gt;15% | Warning: 10\u201315% | Critical: &lt;10%<br><br>${snapshotNote}<span class="tip-src">Source: SendPulse CSV exports</span>` },
-    { label: 'Avg Click Rate (A360)', value: f1(overallClick),
+    { label: 'Avg Click Rate', value: f1(overallClick),
       sub: `${totalClicks.toLocaleString()} clicks`,
       tip: `<strong>Total Clicks \u00F7 Total Delivered \u00D7 100%</strong> across all imported A360 flows.<br><br>${snapshotNote}<span class="tip-src">Source: SendPulse CSV exports</span>` },
-    { label: 'Avg Bounce Rate (A360)', value: f1(overallBounce), status: avgStatus(overallBounce, 'bounceRate'),
+    { label: 'Avg Bounce Rate', value: f1(overallBounce), status: avgStatus(overallBounce, 'bounceRate'),
       sub: `${totalErrors.toLocaleString()} errors / ${totalSent.toLocaleString()} sent`,
       tip: `<strong>Total Errors \u00F7 Total Sent \u00D7 100%</strong> across all imported A360 flows.<br><br>Healthy: &lt;2% | Warning: 2\u20135% | Critical: &gt;5%<br><br>${snapshotNote}<span class="tip-src">Source: SendPulse CSV exports</span>` },
-    { label: 'Avg Unsub Rate (A360)', value: f1(overallUnsub),
+    { label: 'Avg Unsub Rate', value: f1(overallUnsub),
       sub: `${totalUnsubs.toLocaleString()} unsubscribes`,
       tip: `<strong>Total Unsubs \u00F7 Total Delivered \u00D7 100%</strong> across all imported A360 flows.<br><br>Healthy: &lt;0.5% | Warning: 0.5\u20131% | Critical: &gt;1%<br><br>${snapshotNote}<span class="tip-src">Source: SendPulse CSV exports</span>` },
-    { label: 'Spam Complaints (A360)', value: totalSpam.toLocaleString(),
+    { label: 'Spam Complaints', value: totalSpam.toLocaleString(),
       sub: overallSpam.toFixed(3) + '% of delivered',
       tip: `Total "Marked as spam" across all imported A360 flows. Even small numbers matter \u2014 Gmail penalizes above 0.1% spam rate.<br><br>${snapshotNote}<span class="tip-src">Source: SendPulse CSV exports</span>` },
-    { label: 'Flagged Emails (A360)', value: activeEmails.filter(e => getFlag(e) !== 'healthy').length,
+    { label: 'Flagged Emails', value: activeEmails.filter(e => getFlag(e) !== 'healthy').length,
       sub: `of ${activeEmails.length} emails with sends (${activeFlows.length} active flows of ${flows.length} total)`,
       tip: `Individual A360 emails flagged using the same thresholds as campaigns. Flows with 0 sends (dormant) are excluded from flagging. See the table below for details.<br><br>${snapshotNote}<span class="tip-src">Source: SendPulse CSV exports</span>` },
   ];

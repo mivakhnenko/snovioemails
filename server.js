@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 const PORT = process.env.PORT || 3000;
@@ -281,6 +281,60 @@ app.post('/api/postmaster/bulk', (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+// --- A360 imported stats (from CSV exports) ---
+// Stores an array of snapshots, each with { importDate, periodStart, periodEnd, periodDays, flows }
+// Each POST adds or replaces a snapshot for the given periodEnd. This allows accumulation over time.
+app.post('/api/a360-stats', (req, res) => {
+  try {
+    const { importDate, periodStart, periodEnd, periodDays, flows } = req.body;
+    if (!Array.isArray(flows)) return res.status(400).json({ error: 'Expected { importDate, periodStart, periodEnd, periodDays, flows: [...] }' });
+    const data = loadData();
+
+    // Migrate from old single-object format to snapshots array
+    if (data.a360Stats && !Array.isArray(data.a360Stats)) {
+      const old = data.a360Stats;
+      data.a360Stats = [{ importDate: old.importDate, periodStart: null, periodEnd: null, periodDays: null, flows: old.flows }];
+    }
+    if (!Array.isArray(data.a360Stats)) data.a360Stats = [];
+
+    const snapshot = { importDate, periodStart: periodStart || null, periodEnd: periodEnd || null, periodDays: periodDays || 30, flows };
+
+    // Replace existing snapshot for the same periodEnd, or add new one
+    const key = periodEnd || importDate;
+    const idx = data.a360Stats.findIndex(s => (s.periodEnd || s.importDate) === key);
+    if (idx >= 0) {
+      data.a360Stats[idx] = snapshot;
+    } else {
+      data.a360Stats.push(snapshot);
+    }
+
+    // Sort snapshots by periodEnd descending
+    data.a360Stats.sort((a, b) => (b.periodEnd || '').localeCompare(a.periodEnd || ''));
+
+    saveData(data);
+    res.json({ success: true, flowCount: flows.length, importDate, totalSnapshots: data.a360Stats.length });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/a360-stats', (req, res) => {
+  const data = loadData();
+  let stats = data.a360Stats || null;
+  // Migrate: if it's the old single-object format, wrap in array
+  if (stats && !Array.isArray(stats)) {
+    stats = [{ importDate: stats.importDate, periodStart: null, periodEnd: null, periodDays: null, flows: stats.flows }];
+  }
+  res.json(stats);
+});
+
+app.delete('/api/a360-stats', (req, res) => {
+  const data = loadData();
+  delete data.a360Stats;
+  saveData(data);
+  res.json({ success: true });
 });
 
 // Delete postmaster entry

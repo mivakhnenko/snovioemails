@@ -226,9 +226,56 @@
     <!-- AUTOMATION 360 SECTION -->
     <div class="section-divider">
       <div class="section-divider-title">🤖 Automation 360 <i class="info-icon">?<span class="info-tip">Metrics from SendPulse Automation 360 flows (automated email sequences like onboarding, drip campaigns, lifecycle emails).<br><br><strong>Note:</strong> The SendPulse A360 API only provides flow-level totals (starts, emails sent). Per-email open/click/bounce rates are not available via the API — check individual flow reports in SendPulse for those details.<span class="tip-src">Source: SendPulse API /a360/autoresponders</span></span></i></div>
-      <div class="section-divider-sub">Automated flow performance (active flows only)</div>
+      <div class="section-divider-sub" id="a360PeriodLabel">Automated flow performance (active flows only)</div>
     </div>
     <div class="score-grid" id="a360ScoreCards"></div>
+
+    <div class="chart-row">
+      <div class="chart-box">
+        <h3>Top Flows by Email Volume <i class="info-icon">?<span class="info-tip">Top 10 active automation flows ranked by total emails sent. These are <strong>cumulative totals</strong> since each flow was created, not period-specific.<span class="tip-src">Source: SendPulse API /a360/autoresponders</span></span></i></h3>
+        <canvas id="chartA360TopFlows"></canvas>
+      </div>
+      <div class="chart-box">
+        <h3>Flow Status Distribution <i class="info-icon">?<span class="info-tip">Breakdown of all A360 flows by status. <strong>Active</strong> flows are currently running; <strong>Stopped</strong> were paused or ended; <strong>Draft</strong> haven't been activated yet.<span class="tip-src">Source: SendPulse API /a360/autoresponders</span></span></i></h3>
+        <canvas id="chartA360Status"></canvas>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <h3>Top Active Flows <i class="info-icon tip-down">?<span class="info-tip">Active automation flows ranked by email volume. All metrics are <strong>cumulative all-time totals</strong>.<br><br><strong>Completion Rate</strong> = people who reached the end / people who started<br><strong>Conversion Rate</strong> = conversions tracked / people who started<br><strong>Emails/Start</strong> = total emails sent / total starts (engagement depth)<br><br>Click column headers to sort.<span class="tip-src">Source: SendPulse API /a360/autoresponders</span></span></i></h3>
+      <table>
+        <thead><tr>
+          <th>Flow Name</th><th>Starts</th><th>Emails Sent</th>
+          <th>Completion %</th><th>Conversion %</th><th>Emails/Start</th>
+        </tr></thead>
+        <tbody id="a360TopTable"></tbody>
+      </table>
+    </div>
+
+    <!-- A360 ENGAGEMENT (from imported CSV stats) -->
+    <div id="a360EngagementSection" style="display:none">
+      <div class="section-title">A360 Email Engagement <i class="info-icon">?<span class="info-tip">Per-email engagement metrics imported from SendPulse CSV exports. Updated monthly (~30-day snapshots).<br><br>Each import covers a 30-day window. As snapshots accumulate, longer period views (90d, 6m, 1y, all time) will aggregate across multiple imports. Flows with zero sends in a period are excluded from charts and flagging.<span class="tip-src">Source: SendPulse CSV exports (manual import)</span></span></i>
+        <span id="a360ImportDate" style="font-size:10px;color:var(--text-dim);font-weight:400;text-transform:none;letter-spacing:0;margin-left:8px"></span>
+      </div>
+      <div class="score-grid" id="a360EngagementCards"></div>
+      <div class="chart-row">
+        <div class="chart-box">
+          <h3>Open & Click Rates by Flow <i class="info-icon">?<span class="info-tip">Overall open and click rates for each active flow. Rates are weighted (total opens/clicks / total delivered), not averages of per-email rates.<span class="tip-src">Source: SendPulse CSV exports</span></span></i></h3>
+          <canvas id="chartA360Engagement"></canvas>
+        </div>
+        <div class="chart-box">
+          <h3>Bounce & Unsub Rates by Flow <i class="info-icon">?<span class="info-tip">Overall bounce and unsubscribe rates for each active flow. Lower is better. Watch for flows with high bounce rates — they damage sender reputation.<span class="tip-src">Source: SendPulse CSV exports</span></span></i></h3>
+          <canvas id="chartA360Health"></canvas>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <h3>Flagged A360 Emails <i class="info-icon tip-down">?<span class="info-tip">Individual emails within A360 flows that are flagged based on the same thresholds as campaigns:<br>• <strong>Bounce</strong>: healthy &lt;2%, warning 2–5%, critical &gt;5%<br>• <strong>Unsub</strong>: healthy &lt;0.5%, warning 0.5–1%, critical &gt;1%<br>• <strong>Opens</strong>: healthy &gt;15%, warning 10–15%, critical &lt;10%<span class="tip-src">Source: SendPulse CSV exports</span></span></i></h3>
+        <table>
+          <thead><tr><th>Flow</th><th>Email Subject</th><th>Flag</th><th>Open %</th><th>Click %</th><th>Bounce %</th><th>Unsub %</th></tr></thead>
+          <tbody id="a360FlaggedTable"></tbody>
+        </table>
+      </div>
+    </div>
 
     <!-- GOOGLE POSTMASTER SECTION -->
     <div class="section-divider">
@@ -290,7 +337,7 @@
           <button class="btn btn-sm" onclick="closeAutoDetail()">Close</button>
         </div>
         <table>
-          <thead><tr><th>Subject</th><th>Sender</th><th>Last Sent</th></tr></thead>
+          <thead><tr><th>Subject</th><th>Sent</th><th>Delivered</th><th>Open %</th><th>Click %</th><th>Bounce %</th><th>Unsub %</th><th>Flag</th></tr></thead>
           <tbody id="autoDetailTable"></tbody>
         </table>
       </div>
@@ -328,6 +375,7 @@
 
 <script>
 let appData = { postmaster: [], campaigns: [], automations: [], lastSyncDate: null, lastA360SyncDate: null };
+let a360Stats = null; // imported CSV stats — array of snapshots [{importDate, periodStart, periodEnd, periodDays, flows}]
 let campaignPage = 0;
 const CAMPAIGNS_PER_PAGE = 50;
 let campaignSort = { key: 'sendDate', dir: 'desc' };
@@ -398,6 +446,11 @@ async function doLogin(e) {
 async function init() {
   const res = await apiFetch('/api/data');
   appData = await res.json();
+  // Load A360 imported stats
+  try {
+    const statsRes = await apiFetch('/api/a360-stats');
+    if (statsRes.ok) a360Stats = await statsRes.json();
+  } catch {}
   // Backup postmaster to localStorage whenever we have data
   if (appData.postmaster.length > 0) {
     localStorage.setItem('pm_backup', JSON.stringify(appData.postmaster));
@@ -427,6 +480,7 @@ function renderAll() {
   renderScoreCards();
   renderOverviewCharts();
   renderA360ScoreCards();
+  renderA360Engagement();
   renderFlaggedTable();
   renderCampaignTable();
   renderAutoTable();
@@ -452,6 +506,7 @@ document.getElementById('overviewPeriod').addEventListener('click', e => {
   renderScoreCards();
   renderOverviewCharts();
   renderA360ScoreCards();
+  renderA360Engagement();
   renderFlaggedTable();
 });
 
@@ -467,6 +522,15 @@ function getPmInPeriod(days) {
   const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - days);
   const cutoffStr = cutoff.toISOString().substring(0, 10);
   return appData.postmaster.filter(p => p.weekEnding >= cutoffStr);
+}
+
+function getA360ActiveInPeriod(days) {
+  const auto = appData.automations || [];
+  const allActive = auto.filter(a => a.status === 'active');
+  if (days === 0) return allActive;
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - days);
+  const cutoffStr = cutoff.toISOString().substring(0, 10);
+  return allActive.filter(a => a.lastActivity && a.lastActivity >= cutoffStr);
 }
 
 // --- Period label helpers ---
@@ -575,26 +639,325 @@ function avgStatus(val, metric, reverse) {
 // --- A360 Score Cards ---
 function renderA360ScoreCards() {
   const auto = appData.automations || [];
-  const active = auto.filter(a => a.status === 'active');
+  const allActive = auto.filter(a => a.status === 'active');
+  const active = getA360ActiveInPeriod(overviewDays);
+
   const totalStarts = active.reduce((s, a) => s + a.starts, 0);
   const totalSent = active.reduce((s, a) => s + a.sendMessages, 0);
   const totalSteps = active.reduce((s, a) => s + a.emailStepCount, 0);
+  const totalEnd = active.reduce((s, a) => s + a.endCount, 0);
+  const totalConversions = active.reduce((s, a) => s + a.conversions, 0);
+  const totalQueue = active.reduce((s, a) => s + a.inQueue, 0);
+
+  const completionRate = totalStarts > 0 ? (totalEnd / totalStarts * 100) : null;
+  const conversionRate = totalStarts > 0 ? (totalConversions / totalStarts * 100) : null;
+  const emailsPerStart = totalStarts > 0 ? (totalSent / totalStarts) : null;
+
+  const f1 = v => v != null ? v.toFixed(1) : 'N/A';
+  const f1pct = v => v != null ? v.toFixed(1) + '%' : 'N/A';
+
+  // Update period label
+  const pLabel = periodLabel(overviewDays);
+  const pRange = periodDateRange(overviewDays);
+  const a360LabelEl = document.getElementById('a360PeriodLabel');
+  if (a360LabelEl) {
+    if (overviewDays === 0) {
+      a360LabelEl.textContent = 'All active flows \u2014 cumulative totals (all time)';
+    } else {
+      a360LabelEl.textContent = `${active.length} of ${allActive.length} active flows with activity in the last ${pLabel} (${pRange}) \u2014 cumulative totals`;
+    }
+  }
+
+  const cumNote = 'All A360 metrics are <strong>cumulative all-time totals</strong>. The SendPulse API does not provide date-bucketed data for automation flows, so period comparisons are not available.';
 
   const cards = [
-    { label: 'Active Flows', value: active.length, sub: `${auto.length} total flows`,
-      tip: 'Number of Automation 360 flows currently active (running). Includes onboarding sequences, drip campaigns, lifecycle emails, etc.<span class="tip-src">Source: SendPulse API /a360/autoresponders</span>' },
-    { label: 'Total Starts', value: totalStarts.toLocaleString(), sub: 'People entered flows',
-      tip: 'Total number of people who have entered any active automation flow. One person can start multiple flows.<span class="tip-src">Source: SendPulse API /a360/autoresponders</span>' },
-    { label: 'Emails Sent (A360)', value: totalSent.toLocaleString(), sub: 'All active flows combined',
-      tip: 'Total emails sent across all active A360 flows combined. Note: per-email open/click/bounce stats are not available via the SendPulse A360 API \u2014 only total send counts.<span class="tip-src">Source: SendPulse API /a360/autoresponders</span>' },
-    { label: 'Email Steps', value: totalSteps, sub: 'Across active flows',
-      tip: 'Total number of email steps (individual emails) configured across all active flows. Click a flow in the Automations tab to see its email steps.<span class="tip-src">Source: SendPulse API /a360/autoresponders</span>' },
+    { label: 'Active Flows', value: active.length,
+      sub: `${auto.length} total flows (${allActive.length} active)`,
+      tip: `Number of active automation flows${overviewDays > 0 ? ' with send activity in the selected period' : ''}. Includes onboarding sequences, drip campaigns, lifecycle emails, etc.<br><br>${cumNote}<span class="tip-src">Source: SendPulse API /a360/autoresponders</span>` },
+    { label: 'Total Starts', value: totalStarts.toLocaleString(),
+      sub: 'People entered flows',
+      tip: `Total people who have entered the active flows shown. One person can start multiple flows.<br><br>${cumNote}<span class="tip-src">Source: SendPulse API /a360/autoresponders</span>` },
+    { label: 'Emails Sent (A360)', value: totalSent.toLocaleString(),
+      sub: 'All active flows combined',
+      tip: `Total emails sent across all active flows shown. Per-email open/click/bounce stats are not available via the A360 API.<br><br>${cumNote}<span class="tip-src">Source: SendPulse API /a360/autoresponders</span>` },
+    { label: 'Email Steps', value: totalSteps,
+      sub: 'Across active flows',
+      tip: `Total email steps configured across flows. Click a flow in the Automations tab to see individual steps.<br><br>${cumNote}<span class="tip-src">Source: SendPulse API /a360/autoresponders</span>` },
+    { label: 'Completion Rate', value: f1pct(completionRate),
+      sub: `${totalEnd.toLocaleString()} completed of ${totalStarts.toLocaleString()} started`,
+      tip: `<strong>End Count \u00F7 Starts \u00D7 100%</strong>. Percentage of people who reached the end of the automation flow. Lower rates may indicate drop-offs or that flows are still running for many people.<br><br>${cumNote}<span class="tip-src">Source: SendPulse API /a360/autoresponders</span>` },
+    { label: 'Conversion Rate', value: f1pct(conversionRate),
+      sub: `${totalConversions.toLocaleString()} conversions`,
+      tip: `<strong>Conversions \u00F7 Starts \u00D7 100%</strong>. Percentage of people who triggered a conversion goal within the flow. Conversion goals are configured per-flow in SendPulse.<br><br>${cumNote}<span class="tip-src">Source: SendPulse API /a360/autoresponders</span>` },
+    { label: 'Emails per Start', value: f1(emailsPerStart),
+      sub: 'Engagement depth',
+      tip: `<strong>Emails Sent \u00F7 Total Starts</strong>. Average number of emails each person receives across the flow. Higher values indicate deeper engagement (people progressing through more steps).<br><br>${cumNote}<span class="tip-src">Source: SendPulse API /a360/autoresponders</span>` },
+    { label: 'In Queue', value: totalQueue.toLocaleString(),
+      sub: 'Currently waiting in flows',
+      tip: `People currently waiting in automation flows (between steps, waiting for time delays, etc.). A very high queue relative to starts may indicate bottlenecks or stuck flows.<br><br>${cumNote}<span class="tip-src">Source: SendPulse API /a360/autoresponders</span>` },
   ];
 
   document.getElementById('a360ScoreCards').innerHTML = cards.map(m => {
     const tipHtml = m.tip ? tip(m.tip) : '';
     return `<div class="score-card"><div class="label">${m.label}${tipHtml}</div><div class="value">${m.value}</div><div class="sub">${m.sub}</div></div>`;
   }).join('');
+
+  renderA360Charts(active, auto);
+  renderA360TopTable(active);
+}
+
+// --- A360 Charts ---
+function renderA360Charts(active, allAutos) {
+  // Chart 1: Top flows by email volume (horizontal bar)
+  const top10 = [...active]
+    .sort((a, b) => b.sendMessages - a.sendMessages)
+    .slice(0, 10);
+
+  if (charts.a360TopFlows) charts.a360TopFlows.destroy();
+  if (top10.length > 0) {
+    const truncName = (name) => name.length > 35 ? name.substring(0, 32) + '...' : name;
+    charts.a360TopFlows = new Chart(document.getElementById('chartA360TopFlows'), {
+      type: 'bar',
+      data: {
+        labels: top10.map(a => truncName(a.name)),
+        datasets: [{
+          label: 'Emails Sent',
+          data: top10.map(a => a.sendMessages),
+          backgroundColor: 'rgba(91,108,247,0.6)',
+          borderColor: '#5b6cf7',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: '#8b8fa3', font: { size: 9 } }, grid: { color: '#2d3248' } },
+          y: { ticks: { color: '#8b8fa3', font: { size: 9 } }, grid: { display: false } }
+        }
+      }
+    });
+  }
+
+  // Chart 2: Status distribution (doughnut)
+  const statusCounts = {
+    active: allAutos.filter(a => a.status === 'active').length,
+    stopped: allAutos.filter(a => a.status === 'stopped').length,
+    draft: allAutos.filter(a => a.status === 'draft').length,
+  };
+
+  if (charts.a360Status) charts.a360Status.destroy();
+  if (allAutos.length > 0) {
+    charts.a360Status = new Chart(document.getElementById('chartA360Status'), {
+      type: 'doughnut',
+      data: {
+        labels: ['Active', 'Stopped', 'Draft'],
+        datasets: [{
+          data: [statusCounts.active, statusCounts.stopped, statusCounts.draft],
+          backgroundColor: ['rgba(52,211,153,0.7)', 'rgba(248,113,113,0.7)', 'rgba(139,143,163,0.4)'],
+          borderColor: ['#34d399', '#f87171', '#8b8fa3'],
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: '#8b8fa3', font: { size: 10 } } } }
+      }
+    });
+  }
+}
+
+// --- A360 Top Flows Table ---
+function renderA360TopTable(active) {
+  const sorted = [...active]
+    .sort((a, b) => b.sendMessages - a.sendMessages)
+    .slice(0, 15);
+
+  const tbody = document.getElementById('a360TopTable');
+  if (!tbody) return;
+
+  tbody.innerHTML = sorted.length === 0
+    ? '<tr><td colspan="6" style="text-align:center;color:var(--text-dim);padding:20px">No active flows in this period</td></tr>'
+    : sorted.map(a => {
+        const compRate = a.starts > 0 ? (a.endCount / a.starts * 100).toFixed(1) : '-';
+        const convRate = a.starts > 0 ? (a.conversions / a.starts * 100).toFixed(1) : '-';
+        const ePerS = a.starts > 0 ? (a.sendMessages / a.starts).toFixed(1) : '-';
+        return `<tr>
+          <td><strong>${esc(a.name.length > 50 ? a.name.substring(0, 47) + '...' : a.name)}</strong></td>
+          <td>${a.starts.toLocaleString()}</td><td>${a.sendMessages.toLocaleString()}</td>
+          <td>${compRate}${compRate !== '-' ? '%' : ''}</td>
+          <td>${convRate}${convRate !== '-' ? '%' : ''}</td>
+          <td>${ePerS}</td>
+        </tr>`;
+      }).join('');
+}
+
+// --- A360 Engagement (from imported CSV stats) ---
+// Helper: get A360 snapshots that fall within the selected period
+function getA360SnapshotsInPeriod(days) {
+  if (!Array.isArray(a360Stats) || a360Stats.length === 0) return [];
+  if (days === 0) return a360Stats; // all time — use all snapshots
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - days);
+  const cutoffStr = cutoff.toISOString().substring(0, 10);
+  // Include snapshot if its periodEnd is within the range (or if no periodEnd, include it)
+  return a360Stats.filter(s => !s.periodEnd || s.periodEnd >= cutoffStr);
+}
+
+// Helper: merge flows from multiple snapshots (deduplicate by flowName, prefer latest snapshot)
+function getMergedA360Flows(snapshots) {
+  if (snapshots.length === 0) return [];
+  if (snapshots.length === 1) return snapshots[0].flows || [];
+  // Snapshots are sorted by periodEnd descending — later snapshots take priority for same flow
+  const flowMap = new Map();
+  // Process oldest first so newer snapshots overwrite
+  const sorted = [...snapshots].sort((a, b) => (a.periodEnd || '').localeCompare(b.periodEnd || ''));
+  sorted.forEach(s => {
+    (s.flows || []).forEach(f => {
+      flowMap.set(f.flowName, f);
+    });
+  });
+  return [...flowMap.values()];
+}
+
+function renderA360Engagement() {
+  const section = document.getElementById('a360EngagementSection');
+  if (!section) return;
+
+  const snapshots = getA360SnapshotsInPeriod(overviewDays);
+  const flows = getMergedA360Flows(snapshots);
+
+  if (flows.length === 0) {
+    section.style.display = 'none';
+    return;
+  }
+  section.style.display = '';
+
+  const importDateEl = document.getElementById('a360ImportDate');
+  if (importDateEl && snapshots.length > 0) {
+    const latestImport = snapshots.reduce((latest, s) => s.importDate > latest ? s.importDate : latest, '');
+    const periodInfo = snapshots.length === 1 && snapshots[0].periodStart
+      ? ` \u2014 period: ${snapshots[0].periodStart} \u2192 ${snapshots[0].periodEnd}`
+      : snapshots.length > 1
+        ? ` \u2014 ${snapshots.length} snapshots merged`
+        : '';
+    importDateEl.textContent = '(imported ' + new Date(latestImport).toLocaleDateString() + periodInfo + ')';
+  }
+
+  // Only count flows that had sends (active flows)
+  const activeFlows = flows.filter(f => f.totalSent > 0);
+
+  // Aggregate across all flows (weighted totals)
+  const allEmails = flows.flatMap(f => f.emails);
+  const activeEmails = activeFlows.flatMap(f => f.emails);
+  const totalSent = flows.reduce((s, f) => s + f.totalSent, 0);
+  const totalDelivered = flows.reduce((s, f) => s + f.totalDelivered, 0);
+  const totalOpens = flows.reduce((s, f) => s + f.totalOpens, 0);
+  const totalClicks = flows.reduce((s, f) => s + f.totalClicks, 0);
+  const totalUnsubs = flows.reduce((s, f) => s + f.totalUnsubs, 0);
+  const totalSpam = flows.reduce((s, f) => s + f.totalSpam, 0);
+  const totalErrors = flows.reduce((s, f) => s + f.totalErrors, 0);
+
+  const overallOpen = totalDelivered > 0 ? (totalOpens / totalDelivered * 100) : 0;
+  const overallClick = totalDelivered > 0 ? (totalClicks / totalDelivered * 100) : 0;
+  const overallBounce = totalSent > 0 ? (totalErrors / totalSent * 100) : 0;
+  const overallUnsub = totalDelivered > 0 ? (totalUnsubs / totalDelivered * 100) : 0;
+  const overallSpam = totalDelivered > 0 ? (totalSpam / totalDelivered * 100) : 0;
+
+  const pLabel = periodLabel(overviewDays);
+  const snapshotNote = overviewDays === 0
+    ? 'Showing all imported snapshots.'
+    : `Showing snapshots with data in the last ${pLabel}. As more monthly imports accumulate, longer periods will include more data.`;
+
+  const f1 = v => v.toFixed(1) + '%';
+  const cards = [
+    { label: 'Avg Open Rate (A360)', value: f1(overallOpen), status: avgStatus(overallOpen, 'openRate', true),
+      sub: `${totalOpens.toLocaleString()} opens / ${totalDelivered.toLocaleString()} delivered`,
+      tip: `<strong>Total Opens \u00F7 Total Delivered \u00D7 100%</strong> across all imported A360 flows. Weighted by volume (not avg of avgs).<br><br>Healthy: &gt;15% | Warning: 10\u201315% | Critical: &lt;10%<br><br>${snapshotNote}<span class="tip-src">Source: SendPulse CSV exports</span>` },
+    { label: 'Avg Click Rate (A360)', value: f1(overallClick),
+      sub: `${totalClicks.toLocaleString()} clicks`,
+      tip: `<strong>Total Clicks \u00F7 Total Delivered \u00D7 100%</strong> across all imported A360 flows.<br><br>${snapshotNote}<span class="tip-src">Source: SendPulse CSV exports</span>` },
+    { label: 'Avg Bounce Rate (A360)', value: f1(overallBounce), status: avgStatus(overallBounce, 'bounceRate'),
+      sub: `${totalErrors.toLocaleString()} errors / ${totalSent.toLocaleString()} sent`,
+      tip: `<strong>Total Errors \u00F7 Total Sent \u00D7 100%</strong> across all imported A360 flows.<br><br>Healthy: &lt;2% | Warning: 2\u20135% | Critical: &gt;5%<br><br>${snapshotNote}<span class="tip-src">Source: SendPulse CSV exports</span>` },
+    { label: 'Avg Unsub Rate (A360)', value: f1(overallUnsub),
+      sub: `${totalUnsubs.toLocaleString()} unsubscribes`,
+      tip: `<strong>Total Unsubs \u00F7 Total Delivered \u00D7 100%</strong> across all imported A360 flows.<br><br>Healthy: &lt;0.5% | Warning: 0.5\u20131% | Critical: &gt;1%<br><br>${snapshotNote}<span class="tip-src">Source: SendPulse CSV exports</span>` },
+    { label: 'Spam Complaints (A360)', value: totalSpam.toLocaleString(),
+      sub: overallSpam.toFixed(3) + '% of delivered',
+      tip: `Total "Marked as spam" across all imported A360 flows. Even small numbers matter \u2014 Gmail penalizes above 0.1% spam rate.<br><br>${snapshotNote}<span class="tip-src">Source: SendPulse CSV exports</span>` },
+    { label: 'Flagged Emails (A360)', value: activeEmails.filter(e => getFlag(e) !== 'healthy').length,
+      sub: `of ${activeEmails.length} emails with sends (${activeFlows.length} active flows of ${flows.length} total)`,
+      tip: `Individual A360 emails flagged using the same thresholds as campaigns. Flows with 0 sends (dormant) are excluded from flagging. See the table below for details.<br><br>${snapshotNote}<span class="tip-src">Source: SendPulse CSV exports</span>` },
+  ];
+
+  document.getElementById('a360EngagementCards').innerHTML = cards.map(m => {
+    let statusHtml = m.status ? `<span class="health-badge ${m.status}" style="margin-left:8px;font-size:10px">${m.status}</span>` : '';
+    const tipHtml = m.tip ? tip(m.tip) : '';
+    return `<div class="score-card"><div class="label">${m.label}${tipHtml}</div><div class="value">${m.value}${statusHtml}</div><div class="sub">${m.sub}</div></div>`;
+  }).join('');
+
+  // Charts — top active flows by open/click rate and bounce/unsub rate (only flows with sends)
+  const topFlows = [...activeFlows].sort((a, b) => b.totalDelivered - a.totalDelivered).slice(0, 12);
+  const truncName = (name) => name.length > 30 ? name.substring(0, 27) + '...' : name;
+  const chartOpts = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { labels: { color: '#8b8fa3', font: { size: 10 } } } },
+    scales: {
+      x: { ticks: { color: '#8b8fa3', font: { size: 8 }, maxRotation: 60 }, grid: { color: '#2d3248' } },
+      y: { ticks: { color: '#8b8fa3', font: { size: 9 } }, grid: { color: '#2d3248' } }
+    }
+  };
+
+  if (charts.a360Engagement) charts.a360Engagement.destroy();
+  charts.a360Engagement = new Chart(document.getElementById('chartA360Engagement'), {
+    type: 'bar',
+    data: {
+      labels: topFlows.map(f => truncName(f.flowName)),
+      datasets: [
+        { label: 'Open %', data: topFlows.map(f => f.overallOpenRate), backgroundColor: 'rgba(91,108,247,0.7)', borderRadius: 3 },
+        { label: 'Click %', data: topFlows.map(f => f.overallClickRate), backgroundColor: 'rgba(52,211,153,0.7)', borderRadius: 3 }
+      ]
+    },
+    options: chartOpts
+  });
+
+  if (charts.a360Health) charts.a360Health.destroy();
+  charts.a360Health = new Chart(document.getElementById('chartA360Health'), {
+    type: 'bar',
+    data: {
+      labels: topFlows.map(f => truncName(f.flowName)),
+      datasets: [
+        { label: 'Bounce %', data: topFlows.map(f => f.overallBounceRate), backgroundColor: 'rgba(251,191,36,0.7)', borderRadius: 3 },
+        { label: 'Unsub %', data: topFlows.map(f => f.overallUnsubRate), backgroundColor: 'rgba(248,113,113,0.7)', borderRadius: 3 }
+      ]
+    },
+    options: chartOpts
+  });
+
+  // Flagged emails table — only from flows that had sends
+  const flagged = [];
+  activeFlows.forEach(f => {
+    f.emails.forEach(e => {
+      if (e.sent === 0) return; // skip emails with no sends
+      const flag = getFlag(e);
+      if (flag !== 'healthy') {
+        flagged.push({ flow: f.flowName, ...e, flag });
+      }
+    });
+  });
+  // Sort: critical first, then warning
+  flagged.sort((a, b) => (a.flag === 'critical' ? 0 : 1) - (b.flag === 'critical' ? 0 : 1));
+
+  document.getElementById('a360FlaggedTable').innerHTML = flagged.length === 0
+    ? '<tr><td colspan="7" style="text-align:center;color:var(--text-dim);padding:20px">No flagged A360 emails</td></tr>'
+    : flagged.slice(0, 30).map(e => `<tr>
+        <td>${esc(e.flow.length > 30 ? e.flow.substring(0, 27) + '...' : e.flow)}</td>
+        <td title="${esc(e.subject)}">${esc(e.subject.length > 45 ? e.subject.substring(0, 42) + '...' : e.subject)}</td>
+        <td>${flagEmoji(e.flag)}</td>
+        <td>${e.openRate.toFixed(1)}</td><td>${e.clickRate.toFixed(1)}</td>
+        <td>${e.bounceRate.toFixed(1)}</td><td>${e.unsubRate.toFixed(1)}</td>
+      </tr>`).join('');
 }
 
 // --- Charts (weekly aggregated) ---
@@ -808,9 +1171,32 @@ function showAutoDetail(id) {
   const a = (appData.automations || []).find(x => x.id === id);
   if (!a) return;
   document.getElementById('autoDetailTitle').textContent = a.name + ' - Email Steps';
-  document.getElementById('autoDetailTable').innerHTML = (a.emailSteps || []).map(s => `<tr>
-    <td>${esc(s.subject)}</td><td>${esc(s.sender)}</td><td>${s.lastSend ? s.lastSend.substring(0, 16) : '-'}</td>
-  </tr>`).join('');
+
+  // Try to find imported stats for this flow (search across all snapshots, prefer latest)
+  const allMergedFlows = getMergedA360Flows(Array.isArray(a360Stats) ? a360Stats : []);
+  const statsFlow = allMergedFlows.find(f => {
+    const norm = s => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+    return norm(f.flowName) === norm(a.name) || norm(f.flowStartLabel) === norm(a.name);
+  });
+
+  if (statsFlow && statsFlow.emails.length > 0) {
+    // Show full stats from imported CSV
+    document.getElementById('autoDetailTable').innerHTML = statsFlow.emails.map(e => {
+      const flag = getFlag(e);
+      return `<tr>
+        <td title="${esc(e.subject)}">${esc(e.subject.length > 55 ? e.subject.substring(0, 52) + '...' : e.subject)}</td>
+        <td>${e.sent.toLocaleString()}</td><td>${e.delivered.toLocaleString()}</td>
+        <td>${e.openRate.toFixed(1)}</td><td>${e.clickRate.toFixed(1)}</td>
+        <td>${e.bounceRate.toFixed(1)}</td><td>${e.unsubRate.toFixed(1)}</td>
+        <td>${flagEmoji(flag)}</td>
+      </tr>`;
+    }).join('');
+  } else {
+    // Fallback: show basic info from API (no engagement stats)
+    document.getElementById('autoDetailTable').innerHTML = (a.emailSteps || []).map(s => `<tr>
+      <td>${esc(s.subject)}</td><td colspan="7" style="color:var(--text-dim)">No imported stats — export CSV from SendPulse</td>
+    </tr>`).join('');
+  }
   document.getElementById('autoDetail').style.display = '';
 }
 function closeAutoDetail() { document.getElementById('autoDetail').style.display = 'none'; }
@@ -964,6 +1350,25 @@ function exportCSV(type) {
       ['Avg Unsub Rate %', avg(campaigns, 'unsubRate')],
       ['Avg Spam Rate % (Postmaster)', avg(pm, 'spamRate')],
       ['Flagged Campaigns', campaigns.filter(c => getFlag(c) !== 'healthy').length],
+      [],
+      ['--- Automation 360 (cumulative totals) ---'],
+      ...(() => {
+        const a360Active = getA360ActiveInPeriod(overviewDays);
+        const a360Starts = a360Active.reduce((s, a) => s + a.starts, 0);
+        const a360Sent = a360Active.reduce((s, a) => s + a.sendMessages, 0);
+        const a360End = a360Active.reduce((s, a) => s + a.endCount, 0);
+        const a360Conv = a360Active.reduce((s, a) => s + a.conversions, 0);
+        const a360Queue = a360Active.reduce((s, a) => s + a.inQueue, 0);
+        return [
+          ['Active Flows (in period)', a360Active.length],
+          ['Total Starts', a360Starts],
+          ['Emails Sent (A360)', a360Sent],
+          ['Completion Rate %', a360Starts > 0 ? (a360End / a360Starts * 100).toFixed(1) : 'N/A'],
+          ['Conversion Rate %', a360Starts > 0 ? (a360Conv / a360Starts * 100).toFixed(1) : 'N/A'],
+          ['Emails per Start', a360Starts > 0 ? (a360Sent / a360Starts).toFixed(1) : 'N/A'],
+          ['In Queue', a360Queue],
+        ];
+      })(),
       [],
       ['--- Postmaster Weekly Data ---'],
       ['Week Ending', 'Spam %', 'SPF %', 'DKIM %', 'DMARC %', 'Notes'],

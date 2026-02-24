@@ -10,6 +10,7 @@ node_modules/
 !pm-seed.json
 *.js
 !server.js
+!import_a360_stats.js
 *.md
 !CLAUDE.md
 *.tar.gz

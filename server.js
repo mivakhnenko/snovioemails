@@ -14,6 +14,30 @@ const DATA_FILE = path.join(__dirname, 'data.json');
 const SP_CLIENT_ID = process.env.SP_CLIENT_ID || '11aac0b4113b6f096c419464573da363';
 const SP_CLIENT_SECRET = process.env.SP_CLIENT_SECRET || '7f81749453948cda9469449576f43637';
 
+// Dashboard password (set via env var on Render)
+const DASHBOARD_PASS = process.env.DASHBOARD_PASS || 'snovio360';
+const crypto = require('crypto');
+const activeSessions = new Set();
+
+// --- Auth ---
+app.post('/api/auth', (req, res) => {
+  const { password } = req.body;
+  if (password === DASHBOARD_PASS) {
+    const token = crypto.randomBytes(32).toString('hex');
+    activeSessions.add(token);
+    res.json({ success: true, token });
+  } else {
+    res.status(401).json({ error: 'Wrong password' });
+  }
+});
+
+// Protect all other /api routes
+app.use('/api', (req, res, next) => {
+  const token = req.headers['x-auth-token'];
+  if (activeSessions.has(token)) return next();
+  res.status(401).json({ error: 'Not authenticated' });
+});
+
 // --- Data persistence ---
 const PM_SEED = path.join(__dirname, 'pm-seed.json');
 

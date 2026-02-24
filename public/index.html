@@ -94,6 +94,25 @@
   .toast { position: fixed; bottom: 24px; right: 24px; padding: 10px 18px; background: var(--accent); color: #fff; border-radius: 8px; font-size: 12px; opacity: 0; transform: translateY(10px); transition: all 0.3s; z-index: 1000; }
   .toast.show { opacity: 1; transform: translateY(0); }
 
+  /* Login overlay */
+  .login-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 2000; display: flex; align-items: center; justify-content: center; }
+  .login-box { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 40px 36px; width: 340px; text-align: center; }
+  .login-box h2 { font-size: 22px; margin-bottom: 4px; }
+  .login-box h2 .logo { color: var(--accent); font-weight: 700; }
+  .login-box p { font-size: 12px; color: var(--text-dim); margin-bottom: 24px; }
+  .login-box input { width: 100%; padding: 10px 14px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; margin-bottom: 12px; text-align: center; }
+  .login-box input:focus { outline: none; border-color: var(--accent); }
+  .login-box .login-btn { width: 100%; padding: 10px; background: var(--accent); border: none; border-radius: 8px; color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .login-box .login-btn:hover { background: var(--accent-light); }
+  .login-box .login-err { color: var(--red); font-size: 12px; margin-top: 8px; min-height: 18px; }
+
+  /* Export dropdown */
+  .export-wrap { position: relative; }
+  .export-menu { display: none; position: absolute; top: calc(100% + 4px); right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; z-index: 500; min-width: 180px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+  .export-menu.open { display: block; }
+  .export-item { display: block; width: 100%; padding: 9px 16px; background: none; border: none; color: var(--text); font-size: 12px; text-align: left; cursor: pointer; white-space: nowrap; }
+  .export-item:hover { background: var(--surface2); }
+
   .period-selector { display: flex; gap: 6px; margin-bottom: 16px; }
   .period-btn { padding: 5px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface2); color: var(--text-dim); cursor: pointer; font-size: 11px; }
   .period-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
@@ -119,11 +138,33 @@
 </head>
 <body>
 
-<div class="header">
+<!-- Login screen -->
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-box">
+    <h2><span class="logo">Snov.io</span> Dashboard</h2>
+    <p>Enter the team password to continue</p>
+    <form id="loginForm" onsubmit="doLogin(event)">
+      <input type="password" id="loginPass" placeholder="Password" autofocus />
+      <button type="submit" class="login-btn">Log in</button>
+      <div class="login-err" id="loginErr"></div>
+    </form>
+  </div>
+</div>
+
+<div class="header" id="appHeader">
   <h1><span class="logo">Snov.io</span> Deliverability Dashboard</h1>
   <div class="header-actions">
     <span class="sync-info" id="lastSync"></span>
     <button class="btn" id="btnRestore" onclick="restorePostmaster()" style="display:none">Restore Postmaster</button>
+    <div class="export-wrap">
+      <button class="btn" id="btnExport" onclick="toggleExportMenu()">Export CSV ▾</button>
+      <div class="export-menu" id="exportMenu">
+        <button class="export-item" onclick="exportCSV('overview')">Overview (current period)</button>
+        <button class="export-item" onclick="exportCSV('campaigns')">All Campaigns</button>
+        <button class="export-item" onclick="exportCSV('postmaster')">Postmaster Log</button>
+        <button class="export-item" onclick="exportCSV('automations')">Automations (A360)</button>
+      </div>
+    </div>
     <button class="btn btn-primary" id="btnSync" onclick="syncAll()">Sync SendPulse</button>
   </div>
 </div>
@@ -271,6 +312,7 @@ let campaignSort = { key: 'sendDate', dir: 'desc' };
 let autoSort = { key: 'lastActivity', dir: 'desc' };
 let overviewDays = 30;
 let charts = {};
+let authToken = sessionStorage.getItem('auth_token') || '';
 
 const THRESHOLDS = {
   bounceRate: { healthy: 2, warning: 5 },
@@ -279,8 +321,60 @@ const THRESHOLDS = {
   clickRate:  { healthy: 2, warning: 1 },
 };
 
+// --- Auth helpers ---
+function apiFetch(url, opts = {}) {
+  opts.headers = { ...opts.headers, 'x-auth-token': authToken };
+  return fetch(url, opts);
+}
+
+async function doLogin(e) {
+  e.preventDefault();
+  const pass = document.getElementById('loginPass').value;
+  const errEl = document.getElementById('loginErr');
+  errEl.textContent = '';
+  try {
+    const res = await fetch('/api/auth', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pass })
+    });
+    const data = await res.json();
+    if (res.ok && data.token) {
+      authToken = data.token;
+      sessionStorage.setItem('auth_token', authToken);
+      document.getElementById('loginOverlay').style.display = 'none';
+      document.getElementById('appHeader').style.display = '';
+      document.querySelector('.container').style.display = '';
+      init();
+    } else {
+      errEl.textContent = 'Wrong password. Try again.';
+      document.getElementById('loginPass').select();
+    }
+  } catch { errEl.textContent = 'Connection error.'; }
+}
+
+// On page load: check if we already have a valid token
+(async function checkAuth() {
+  if (authToken) {
+    try {
+      const res = await fetch('/api/data', { headers: { 'x-auth-token': authToken } });
+      if (res.ok) {
+        document.getElementById('loginOverlay').style.display = 'none';
+        document.getElementById('appHeader').style.display = '';
+        document.querySelector('.container').style.display = '';
+        init();
+        return;
+      }
+    } catch {}
+    sessionStorage.removeItem('auth_token');
+    authToken = '';
+  }
+  // Not authenticated — hide dashboard, show login
+  document.getElementById('appHeader').style.display = 'none';
+  document.querySelector('.container').style.display = 'none';
+})();
+
 async function init() {
-  const res = await fetch('/api/data');
+  const res = await apiFetch('/api/data');
   appData = await res.json();
   // Backup postmaster to localStorage whenever we have data
   if (appData.postmaster.length > 0) {
@@ -701,8 +795,8 @@ async function savePostmaster(e) {
     dmarcPass: parseFloat(document.getElementById('pmDmarc').value) || 0,
     notes: document.getElementById('pmNotes').value
   };
-  await fetch('/api/postmaster', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(entry) });
-  appData = await (await fetch('/api/data')).json();
+  await apiFetch('/api/postmaster', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(entry) });
+  appData = await (await apiFetch('/api/data')).json();
   if (appData.postmaster.length > 0) localStorage.setItem('pm_backup', JSON.stringify(appData.postmaster));
   renderAll();
   showToast('Postmaster entry saved');
@@ -710,8 +804,8 @@ async function savePostmaster(e) {
 }
 
 async function deletePostmaster(weekEnding) {
-  await fetch('/api/postmaster/' + weekEnding, { method: 'DELETE' });
-  appData = await (await fetch('/api/data')).json();
+  await apiFetch('/api/postmaster/' + weekEnding, { method: 'DELETE' });
+  appData = await (await apiFetch('/api/data')).json();
   renderAll();
   showToast('Entry deleted');
 }
@@ -721,14 +815,14 @@ async function syncAll() {
   const btn = document.getElementById('btnSync');
   btn.disabled = true; btn.textContent = 'Syncing campaigns...';
   try {
-    const campRes = await fetch('/api/sync-campaigns', { method: 'POST' });
+    const campRes = await apiFetch('/api/sync-campaigns', { method: 'POST' });
     const campResult = await campRes.json();
 
     btn.textContent = 'Syncing automations...';
-    const autoRes = await fetch('/api/sync-automations', { method: 'POST' });
+    const autoRes = await apiFetch('/api/sync-automations', { method: 'POST' });
     const autoResult = await autoRes.json();
 
-    appData = await (await fetch('/api/data')).json();
+    appData = await (await apiFetch('/api/data')).json();
     updateSyncInfo();
     renderAll();
     showToast(`Synced ${campResult.totalCampaigns} campaigns + ${autoResult.totalFlows} A360 flows (${autoResult.activeFlows} active)`);
@@ -743,9 +837,9 @@ async function restorePostmaster() {
   const entries = JSON.parse(pmBackup);
   btn.disabled = true; btn.textContent = 'Restoring...';
   try {
-    const res = await fetch('/api/postmaster/bulk', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(entries) });
+    const res = await apiFetch('/api/postmaster/bulk', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(entries) });
     const result = await res.json();
-    appData = await (await fetch('/api/data')).json();
+    appData = await (await apiFetch('/api/data')).json();
     renderAll();
     btn.style.display = 'none';
     showToast(`Restored ${result.count} Postmaster entries`);
@@ -758,11 +852,100 @@ function tip(text) {
   return `<i class="info-icon">?<span class="info-tip">${text}</span></i>`;
 }
 
+// --- CSV Export ---
+function toggleExportMenu() {
+  document.getElementById('exportMenu').classList.toggle('open');
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('.export-wrap')) document.getElementById('exportMenu')?.classList.remove('open');
+});
+
+function downloadCSV(filename, csvContent) {
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('Exported ' + filename);
+}
+
+function csvEsc(val) {
+  const s = String(val ?? '');
+  return s.includes(',') || s.includes('"') || s.includes('\n') ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+
+function exportCSV(type) {
+  document.getElementById('exportMenu').classList.remove('open');
+  const today = new Date().toISOString().substring(0, 10);
+  let rows, filename;
+
+  if (type === 'overview') {
+    const campaigns = getCampaignsInPeriod(overviewDays);
+    const pm = getPmInPeriod(overviewDays);
+    const avg = (arr, key) => arr.length > 0 ? (arr.reduce((s, c) => s + (c[key] || 0), 0) / arr.length).toFixed(1) : 'N/A';
+    const sum = (arr, key) => arr.reduce((s, c) => s + (c[key] || 0), 0);
+    const totalSent = sum(campaigns, 'sent');
+    const totalDelivered = sum(campaigns, 'delivered');
+    const periodLabel = overviewDays === 0 ? 'All time' : `Last ${overviewDays} days`;
+    rows = [
+      ['Snov.io Deliverability Report', '', today],
+      ['Period', periodLabel],
+      [],
+      ['Metric', 'Value'],
+      ['Campaigns Sent', campaigns.length],
+      ['Total Emails Sent', totalSent],
+      ['Total Emails Delivered', totalDelivered],
+      ['Delivery Rate %', totalSent > 0 ? (totalDelivered / totalSent * 100).toFixed(1) : 'N/A'],
+      ['Avg Open Rate %', avg(campaigns, 'openRate')],
+      ['Avg Click Rate %', avg(campaigns, 'clickRate')],
+      ['Avg Bounce Rate %', avg(campaigns, 'bounceRate')],
+      ['Avg Unsub Rate %', avg(campaigns, 'unsubRate')],
+      ['Avg Spam Rate % (Postmaster)', avg(pm, 'spamRate')],
+      ['Flagged Campaigns', campaigns.filter(c => getFlag(c) !== 'healthy').length],
+      [],
+      ['--- Postmaster Weekly Data ---'],
+      ['Week Ending', 'Spam %', 'SPF %', 'DKIM %', 'DMARC %', 'Notes'],
+      ...pm.map(p => [p.weekEnding, p.spamRate, p.spfPass, p.dkimPass, p.dmarcPass, p.notes || ''])
+    ];
+    filename = `snovio-overview-${today}.csv`;
+
+  } else if (type === 'campaigns') {
+    rows = [
+      ['Date', 'Campaign', 'Subject', 'Sent', 'Delivered', 'Opens', 'Clicks', 'Bounced', 'Unsubs', 'Open %', 'Click %', 'Bounce %', 'Unsub %', 'Flag'],
+      ...appData.campaigns.map(c => [
+        c.sendDate?.substring(0, 10), c.name, c.subject, c.sent, c.delivered,
+        c.opens, c.clicks, c.bounced, c.unsubscribes,
+        c.openRate.toFixed(1), c.clickRate.toFixed(1), c.bounceRate.toFixed(1), c.unsubRate.toFixed(1), getFlag(c)
+      ])
+    ];
+    filename = `snovio-campaigns-${today}.csv`;
+
+  } else if (type === 'postmaster') {
+    rows = [
+      ['Week Ending', 'Domain', 'Spam Rate %', 'SPF Pass %', 'DKIM Pass %', 'DMARC Pass %', 'Days Reported', 'Notes'],
+      ...appData.postmaster.map(p => [
+        p.weekEnding, p.domain || 'snov.io', p.spamRate, p.spfPass, p.dkimPass, p.dmarcPass, p.daysReported || '', p.notes || ''
+      ])
+    ];
+    filename = `snovio-postmaster-${today}.csv`;
+
+  } else if (type === 'automations') {
+    rows = [
+      ['Flow Name', 'Status', 'Sender', 'Starts', 'Emails Sent', 'Email Steps', 'Last Activity'],
+      ...(appData.automations || []).map(a => [
+        a.name, a.status, a.senderEmail, a.starts, a.sendMessages, a.emailStepCount, a.lastActivity || ''
+      ])
+    ];
+    filename = `snovio-automations-${today}.csv`;
+  }
+
+  const csv = rows.map(row => Array.isArray(row) ? row.map(csvEsc).join(',') : csvEsc(row)).join('\n');
+  downloadCSV(filename, csv);
+}
+
 // --- Helpers ---
 function esc(str) { const d = document.createElement('div'); d.textContent = str || ''; return d.innerHTML; }
 function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3500); }
-
-init();
 </script>
 </body>
 </html>
